@@ -3,11 +3,10 @@ package tme
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"time"
-
-	"io"
 
 	"github.com/Financial-Times/tme-reader/tmereader"
 	log "github.com/Sirupsen/logrus"
@@ -73,6 +72,7 @@ func (s *Service) openDB() error {
 }
 
 func (s *Service) loadDB() error {
+	s.setDataLoaded(false)
 	wgl := make(map[string]*sync.WaitGroup)
 	processingChannels := make(map[string]chan []BasicConcept)
 	log.Info("Loading DB...")
@@ -98,7 +98,6 @@ func (s *Service) loadDB() error {
 
 		responseCount := 0
 		for {
-			//log.Info(k, responseCount)
 			terms, err := s.repos[k].GetTmeTermsFromIndex(responseCount)
 			if err != nil {
 				return err
@@ -115,6 +114,15 @@ func (s *Service) loadDB() error {
 	}
 
 	return nil
+}
+
+func (s *Service) checkAllLoaded() bool {
+	for k := range EndpointTypeMappings {
+		if i, _ := s.getCount(k); i <= 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Service) processTerms(terms []interface{}, taxonomy string, c chan<- []BasicConcept) {
@@ -176,11 +184,6 @@ func (s *Service) getCount(endpoint string) (int, error) {
 	if !s.isDataLoaded() {
 		return 0, nil
 	}
-
-	//str := ""
-	//if val, ok := EndpointTypeMappings[endpoint]["taxonomy"]; ok {
-	//	str = val.(string)
-	//}
 
 	var count int
 	err := s.db.View(func(tx *bolt.Tx) error {

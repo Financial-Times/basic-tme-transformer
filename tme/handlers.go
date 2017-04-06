@@ -25,8 +25,9 @@ func (th *Handler) HandleGetFullTaxonomy(resp http.ResponseWriter, req *http.Req
 	vars := mux.Vars(req)
 	t := vars["type"]
 
-	if c, _ := th.service.getCount(t); c == 0 {
-		writeJSONMessageWithStatus(resp, fmt.Sprintf("%s not found", EndpointTypeMappings[t]["type"]), http.StatusNotFound)
+	if c := th.service.checkAllLoaded(); !c {
+		resp.Header().Set("Content-Type", "application/json")
+		writeJSONMessageWithStatus(resp, "Data is not loaded", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -46,6 +47,12 @@ func (th *Handler) HandleGetSingleConcept(resp http.ResponseWriter, req *http.Re
 	t := vars["type"]
 	uuid := vars["uuid"]
 
+	if c := th.service.checkAllLoaded(); !c {
+		resp.Header().Set("Content-Type", "application/json")
+		writeJSONMessageWithStatus(resp, "Data is not loaded", http.StatusServiceUnavailable)
+		return
+	}
+
 	resp.Header().Add("Content-Type", "application/json")
 
 	obj, found, err := th.service.getConceptByUUID(t, uuid)
@@ -59,8 +66,9 @@ func (th *Handler) GetIDs(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	t := vars["type"]
 
-	if c, _ := th.service.getCount(t); c == 0 {
-		writeJSONMessageWithStatus(resp, "People not found", http.StatusNotFound)
+	if c := th.service.checkAllLoaded(); !c {
+		resp.Header().Set("Content-Type", "application/json")
+		writeJSONMessageWithStatus(resp, "Data is not loaded", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -79,9 +87,9 @@ func (th *Handler) GetCount(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	t := vars["type"]
 
-	if !th.service.isDataLoaded() {
-		resp.Header().Add("Content-Type", "application/json")
-		writeStatusServiceUnavailable(resp)
+	if c := th.service.checkAllLoaded(); !c {
+		resp.Header().Set("Content-Type", "application/json")
+		writeJSONMessageWithStatus(resp, "Data is not loaded", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -103,10 +111,6 @@ func (th *Handler) GetCount(resp http.ResponseWriter, req *http.Request) {
 func writeJSONMessageWithStatus(w http.ResponseWriter, msg string, statusCode int) {
 	w.WriteHeader(statusCode)
 	fmt.Fprintln(w, fmt.Sprintf("{\"message\": \"%s\"}", msg))
-}
-
-func writeStatusServiceUnavailable(w http.ResponseWriter) {
-	writeJSONMessageWithStatus(w, "Service Unavailable", http.StatusServiceUnavailable)
 }
 
 func writeJSONResponse(obj interface{}, found bool, theType string, writer http.ResponseWriter) {

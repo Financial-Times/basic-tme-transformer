@@ -67,11 +67,11 @@ var EndpointTypeMappings = map[string]map[string]interface{}{
 		"source":   &tmereader.KnowledgeBases{},
 		"type":     "Genre",
 	},
-	//"locations": {
-	//	"taxonomy": "GL",
-	//	"source":   &tmereader.AuthorityFiles{},
-	//	"type":     "Location",
-	//},
+	"locations": {
+		"taxonomy": "GL",
+		"source":   &tmereader.AuthorityFiles{},
+		"type":     "Location",
+	},
 	"special-reports": {
 		"taxonomy": "SpecialReports",
 		"source":   &tmereader.AuthorityFiles{},

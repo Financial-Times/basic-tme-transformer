@@ -8,7 +8,12 @@ import (
 	"sync"
 	"time"
 
+	"net/url"
+
+	"strings"
+
 	"github.com/Financial-Times/tme-reader/tmereader"
+	"github.com/Financial-Times/transactionid-utils-go"
 	log "github.com/Sirupsen/logrus"
 	"github.com/boltdb/bolt"
 )
@@ -19,22 +24,24 @@ type httpClient interface {
 
 type Service struct {
 	sync.RWMutex
-	repos         map[string]tmereader.Repository
-	cacheFileName string
-	httpClient    httpClient
-	baseURL       string
-	db            *bolt.DB
-	dataLoaded    bool
-	maxTmeRecords int
+	repos          map[string]tmereader.Repository
+	cacheFileName  string
+	httpClient     httpClient
+	baseURL        string
+	db             *bolt.DB
+	dataLoaded     bool
+	maxTmeRecords  int
+	writerEndpoint string
 }
 
-func NewService(repos map[string]tmereader.Repository, cacheFilename string, httpClient httpClient, baseURL string, maxTmeRecords int) *Service {
+func NewService(repos map[string]tmereader.Repository, cacheFilename string, httpClient httpClient, baseURL string, maxTmeRecords int, writerEndpoint string) *Service {
 	svc := &Service{
-		repos:         repos,
-		cacheFileName: cacheFilename,
-		httpClient:    httpClient,
-		baseURL:       baseURL,
-		maxTmeRecords: maxTmeRecords,
+		repos:          repos,
+		cacheFileName:  cacheFilename,
+		httpClient:     httpClient,
+		baseURL:        baseURL,
+		maxTmeRecords:  maxTmeRecords,
+		writerEndpoint: writerEndpoint,
 	}
 	go func(service *Service) {
 		err := service.loadDB()
@@ -64,7 +71,7 @@ func (s *Service) openDB() error {
 	if s.db == nil {
 		var err error
 		if s.db, err = bolt.Open(s.cacheFileName, 0600, &bolt.Options{Timeout: 1 * time.Second}); err != nil {
-			log.Errorf("ERROR opening cache file for init: %v.", err.Error())
+			log.Errorf("Error opening cache file for init: %v.", err.Error())
 			return err
 		}
 	}
@@ -155,7 +162,7 @@ func (s *Service) processConcepts(c <-chan []BasicConcept, taxonomy string, wg *
 			}
 			return nil
 		}); err != nil {
-			log.Errorf("ERROR storing to cache: %+v.", err)
+			log.Errorf("Error storing to cache: %+v.", err)
 		}
 		wg.Done()
 	}
@@ -232,17 +239,17 @@ func (s *Service) getConceptByUUID(endpoint, uuid string) (BasicConcept, bool, e
 	})
 
 	if err != nil {
-		log.Errorf("ERROR reading from cache file for [%v]: %v", uuid, err.Error())
+		log.Errorf("Error reading from cache file for [%v]: %v", uuid, err.Error())
 		return BasicConcept{}, false, err
 	}
 	if len(cachedValue) == 0 {
-		log.Infof("INFO No cached value for [%v].", uuid)
+		log.Infof("No cached value for [%v].", uuid)
 		return BasicConcept{}, false, nil
 	}
 
 	var cachedConcept BasicConcept
 	if err := json.Unmarshal(cachedValue, &cachedConcept); err != nil {
-		log.Errorf("ERROR unmarshalling cached value for [%v]: %v.", uuid, err.Error())
+		log.Errorf("Error unmarshalling cached value for [%v]: %v.", uuid, err.Error())
 		return BasicConcept{}, true, err
 	}
 	return cachedConcept, true, nil
@@ -271,4 +278,86 @@ func (s *Service) getConceptUUIDs(endpoint string) (io.PipeReader, error) {
 		})
 	}()
 	return *pv, nil
+}
+
+type conceptResponse struct {
+	uuid     string
+	jobID    string
+	response error
+}
+
+//var sendWorkers int = 10
+
+func (s *Service) sendConcepts(endpoint string) (string, error) {
+	jobID := strings.Replace(transactionidutils.NewTransactionID(), "tid", "job", -1)
+	successCount := 0
+	errorCount := 0
+	responseChannel := make(chan conceptResponse)
+	var wg sync.WaitGroup
+	err := s.db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(endpoint))
+		if bucket == nil {
+			return fmt.Errorf("Bucket %v not found!", endpoint)
+		}
+		wg.Add(bucket.Stats().KeyN)
+
+		err := bucket.ForEach(func(k, v []byte) error {
+			log.Debugf("Sending concept to writer: %s", k)
+
+			go func(endpoint, uuid, payload, jobID string) {
+				err := s.sendSingleConcept(endpoint, uuid, payload, jobID)
+				responseChannel <- conceptResponse{
+					uuid:     uuid,
+					jobID:    jobID,
+					response: err,
+				}
+				wg.Done()
+			}(endpoint, string(k), string(v), jobID)
+			return nil
+		})
+
+		go func() {
+			wg.Wait()
+			close(responseChannel)
+		}()
+
+		for r := range responseChannel {
+			if r.response != nil {
+				log.Errorf("Error sending concept %s [%s]: %s", r.uuid, r.jobID, r.response)
+				errorCount += 1
+			} else {
+				successCount += 1
+			}
+		}
+
+		return err
+	})
+	return jobID, err
+}
+
+func (s *Service) sendSingleConcept(endpoint, uuid, payload, transactionID string) error {
+	fullURL, err := url.Parse(s.writerEndpoint + "/" + uuid)
+	if err != nil {
+		log.Errorf("Error parsing url %s: %s", s.writerEndpoint+"/"+endpoint+"/"+uuid, err)
+		return err
+	}
+	req, err := http.NewRequest("PUT", fullURL.String(), strings.NewReader(payload))
+	if err != nil {
+		log.Errorf("Error creating request: %s", err)
+		return err
+	}
+
+	if transactionID == "" {
+		transactionID = transactionidutils.NewTransactionID()
+	}
+	req.Header.Set(transactionidutils.TransactionIDHeader, transactionID)
+	req.Header.Set("Content-Type", "application/json")
+	req.ContentLength = int64(len(payload))
+
+	resp, err := s.httpClient.Do(req)
+	if int(resp.StatusCode/100) != 2 {
+		log.Errorf("Bad response from writer [%d]: %s", resp.StatusCode, fullURL)
+		return err
+	}
+	return err
 }

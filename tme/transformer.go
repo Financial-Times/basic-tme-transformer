@@ -77,24 +77,24 @@ var EndpointTypeMappings = map[string]map[string]interface{}{
 		"source":   &tmereader.AuthorityFiles{},
 		"type":     "SpecialReport",
 	},
-	//"topics": {
-	//	"taxonomy": "Topics",
-	//	"source":   &tmereader.KnowledgeBases{},
-	//	"type":     "Topic",
-	//},
-	//"subjects": {
-	//	"taxonomy": "Subjects",
-	//	"source":   &tmereader.KnowledgeBases{},
-	//	"type":     "Subject",
-	//},
-	//"sections": {
-	//	"taxonomy": "Sections",
-	//	"source":   &tmereader.KnowledgeBases{},
-	//	"type":     "Section",
-	//},
-	//"alphaville-series": {
-	//	"taxonomy": "AlphavilleSeriesClassification",
-	//	"source":   &tmereader.KnowledgeBases{},
-	//	"type":     "AlphavilleSeries",
-	//},
+	"topics": {
+		"taxonomy": "Topics",
+		"source":   &tmereader.KnowledgeBases{},
+		"type":     "Topic",
+	},
+	"subjects": {
+		"taxonomy": "Subjects",
+		"source":   &tmereader.KnowledgeBases{},
+		"type":     "Subject",
+	},
+	"sections": {
+		"taxonomy": "Sections",
+		"source":   &tmereader.KnowledgeBases{},
+		"type":     "Section",
+	},
+	"alphaville-series": {
+		"taxonomy": "AlphavilleSeriesClassification",
+		"source":   &tmereader.KnowledgeBases{},
+		"type":     "AlphavilleSeries",
+	},
 }

@@ -104,9 +104,18 @@ func main() {
 		EnvVar: "LOG_LEVEL",
 	})
 
+	writerEndpoint := app.String(cli.StringOpt{
+		Name:   "writerEndpoint",
+		Desc:   "Endpoint for the concept RW app.",
+		EnvVar: "WRITER_ENDPOINT",
+	})
+
 	app.Action = func() {
 
-		lvl, _ := log.ParseLevel(*logLevel)
+		lvl, err := log.ParseLevel(*logLevel)
+		if err != nil {
+			log.Fatalf("Cannot parse log level: %s", *logLevel)
+		}
 		log.SetLevel(lvl)
 
 		client := getResilientClient()
@@ -114,11 +123,21 @@ func main() {
 
 		//log.SetFormatter(&log.JSONFormatter{})
 		log.WithFields(log.Fields{
-			"tmeUsername": *tmeUsername,
-			"tmePassword": *tmePassword,
-			"tmeToken":    *tmeToken,
-			"tmeBaseURL":  *tmeBaseURL,
-		}).Info("TME credentials")
+			"tmeUsername":        *tmeUsername,
+			"tmePassword":        *tmePassword,
+			"tmeToken":           *tmeToken,
+			"tmeBaseURL":         *tmeBaseURL,
+			"maxRecords":         *maxRecords,
+			"batchSize":          *batchSize,
+			"baseURL":            *baseURL,
+			"port":               *port,
+			"cacheFileName":      *cacheFileName,
+			"graphiteTCPAddress": *graphiteTCPAddress,
+			"graphitePrefix":     *graphitePrefix,
+			"logMetrics":         *graphitePrefix,
+			"logLevel":           *logLevel,
+			"writerEndpoint":     *writerEndpoint,
+		}).Info("Starting with variables")
 
 		modelTransformer := new(tme.Transformer)
 		repos := make(map[string]tmereader.Repository)
@@ -136,7 +155,7 @@ func main() {
 				modelTransformer)
 		}
 
-		service := tme.NewService(repos, *cacheFileName, client, *baseURL, *maxRecords)
+		service := tme.NewService(repos, *cacheFileName, client, *baseURL, *maxRecords, *writerEndpoint)
 
 		th := tme.NewHandler(service)
 		buildRoutes(th)
@@ -151,6 +170,7 @@ func main() {
 func getResilientClient() *pester.Client {
 	tr := &http.Transport{
 		MaxIdleConnsPerHost: 32,
+		MaxIdleConns:        32,
 		Dial: (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
@@ -187,10 +207,15 @@ func buildRoutes(th *tme.Handler) {
 		"GET": http.HandlerFunc(th.GetIDs),
 	}
 
+	sendConceptsHandler := handlers.MethodHandler{
+		"POST": http.HandlerFunc(th.HandleSendConcepts),
+	}
+
 	servicesRouter.Handle("/transformers/{type}", getFullHandler)
 	servicesRouter.Handle("/transformers/{type}/__count", countHandler)
 	servicesRouter.Handle("/transformers/{type}/__ids", getIDsHandler)
-	servicesRouter.Handle("/transformers/{type}/{uuid}", getSingleHandler)
+	servicesRouter.Handle("/transformers/{type}/send", sendConceptsHandler)
+	servicesRouter.Handle("/transformers/{type}/{uuid:?([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})}", getSingleHandler)
 
 	var monitoringRouter http.Handler = servicesRouter
 	monitoringRouter = httphandlers.TransactionAwareRequestLoggingHandler(log.StandardLogger(), monitoringRouter)

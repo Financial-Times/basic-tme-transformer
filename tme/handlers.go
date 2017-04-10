@@ -108,6 +108,32 @@ func (th *Handler) GetCount(resp http.ResponseWriter, req *http.Request) {
 	resp.Write([]byte(strconv.Itoa(count)))
 }
 
+func (th *Handler) HandleSendConcepts(resp http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	t := vars["type"]
+
+	if c := th.service.checkAllLoaded(); !c {
+		resp.Header().Set("Content-Type", "application/json")
+		writeJSONMessageWithStatus(resp, "Data is not loaded", http.StatusServiceUnavailable)
+		return
+	}
+
+	if _, ok := EndpointTypeMappings[t]["type"]; !ok {
+		resp.Header().Add("Content-Type", "application/json")
+		writeJSONMessageWithStatus(resp, fmt.Sprintf("Taxonomy %s is not supported", t), http.StatusBadRequest)
+		return
+	}
+
+	jobID, err := th.service.sendConcepts(t)
+	if err != nil {
+		resp.Header().Add("Content-Type", "application/json")
+		writeJSONMessageWithStatus(resp, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	resp.WriteHeader(http.StatusOK)
+	fmt.Fprintln(resp, fmt.Sprintf("{\"jobID\": \"%s\"}", jobID))
+}
+
 func writeJSONMessageWithStatus(w http.ResponseWriter, msg string, statusCode int) {
 	w.WriteHeader(statusCode)
 	fmt.Fprintln(w, fmt.Sprintf("{\"message\": \"%s\"}", msg))

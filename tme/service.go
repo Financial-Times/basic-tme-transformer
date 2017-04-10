@@ -286,53 +286,85 @@ type conceptResponse struct {
 	response error
 }
 
-//var sendWorkers int = 10
+type conceptRequest struct {
+	uuid    string
+	jobID   string
+	theType string
+	payload string
+}
 
-func (s *Service) sendConcepts(endpoint string) (string, error) {
+var sendWorkers int = 100
+
+func (s *Service) sendConcepts(endpoint string) (string, int, int, error) {
 	jobID := strings.Replace(transactionidutils.NewTransactionID(), "tid", "job", -1)
 	successCount := 0
 	errorCount := 0
 	responseChannel := make(chan conceptResponse)
-	var wg sync.WaitGroup
+	requestChannel := make(chan conceptRequest)
+	var wgReq sync.WaitGroup
+	var wgResp sync.WaitGroup
+
 	err := s.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(endpoint))
 		if bucket == nil {
 			return fmt.Errorf("Bucket %v not found!", endpoint)
 		}
-		wg.Add(bucket.Stats().KeyN)
 
+		go func(responseChannel <-chan conceptResponse, successCount int, errorCount int) {
+			for r := range responseChannel {
+				if r.response != nil {
+					log.Errorf("Error sending concept %s [%s]: %s", r.uuid, r.jobID, r.response)
+					errorCount += 1
+				} else {
+					successCount += 1
+				}
+			}
+		}(responseChannel, successCount, errorCount)
+
+		wgResp.Add(sendWorkers)
+		for i := 0; i < sendWorkers; i++ {
+			go s.writeWorker(wgResp, requestChannel, responseChannel)
+		}
+
+		go func() {
+			wgResp.Wait()
+			close(responseChannel)
+		}()
+
+		wgReq.Add(bucket.Stats().KeyN)
 		err := bucket.ForEach(func(k, v []byte) error {
 			log.Debugf("Sending concept to writer: %s", k)
 
-			go func(endpoint, uuid, payload, jobID string) {
-				err := s.sendSingleConcept(endpoint, uuid, payload, jobID)
-				responseChannel <- conceptResponse{
-					uuid:     uuid,
-					jobID:    jobID,
-					response: err,
-				}
-				wg.Done()
-			}(endpoint, string(k), string(v), jobID)
+			requestChannel <- conceptRequest{
+				uuid:    string(k),
+				jobID:   jobID,
+				payload: string(v),
+			}
+			wgReq.Done()
+
 			return nil
 		})
 
 		go func() {
-			wg.Wait()
-			close(responseChannel)
+			wgReq.Wait()
+			close(requestChannel)
 		}()
-
-		for r := range responseChannel {
-			if r.response != nil {
-				log.Errorf("Error sending concept %s [%s]: %s", r.uuid, r.jobID, r.response)
-				errorCount += 1
-			} else {
-				successCount += 1
-			}
-		}
 
 		return err
 	})
-	return jobID, err
+	return jobID, successCount, errorCount, err
+}
+
+func (s *Service) writeWorker(wg sync.WaitGroup, requestChannel <-chan conceptRequest, responseChannel chan<- conceptResponse) {
+	for req := range requestChannel {
+		err := s.sendSingleConcept(req.theType, req.uuid, req.payload, req.jobID)
+		responseChannel <- conceptResponse{
+			uuid:     req.uuid,
+			jobID:    req.jobID,
+			response: err,
+		}
+	}
+	wg.Done()
 }
 
 func (s *Service) sendSingleConcept(endpoint, uuid, payload, transactionID string) error {
@@ -355,6 +387,7 @@ func (s *Service) sendSingleConcept(endpoint, uuid, payload, transactionID strin
 	req.ContentLength = int64(len(payload))
 
 	resp, err := s.httpClient.Do(req)
+	defer resp.Body.Close()
 	if int(resp.StatusCode/100) != 2 {
 		log.Errorf("Bad response from writer [%d]: %s", resp.StatusCode, fullURL)
 		return err

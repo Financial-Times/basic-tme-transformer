@@ -124,14 +124,20 @@ func (th *Handler) HandleSendConcepts(resp http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	jobID, err := th.service.sendConcepts(t)
+	jobID, successCount, errorCount, err := th.service.sendConcepts(t)
 	if err != nil {
 		resp.Header().Add("Content-Type", "application/json")
 		writeJSONMessageWithStatus(resp, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	resp.WriteHeader(http.StatusOK)
-	fmt.Fprintln(resp, fmt.Sprintf("{\"jobID\": \"%s\"}", jobID))
+	//fmt.Fprintln(resp, fmt.Sprintf("{\"jobID\": \"%s\"}", jobID))
+	writeJSONResponse(map[string]string{
+		"jobID":        jobID,
+		"successCount": string(successCount),
+		"errorCount":   string(errorCount),
+	}, true, t, resp)
+
 }
 
 func writeJSONMessageWithStatus(w http.ResponseWriter, msg string, statusCode int) {

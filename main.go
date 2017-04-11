@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"net/url"
+
 	"github.com/Financial-Times/base-ft-rw-app-go/baseftrwapp"
 	"github.com/Financial-Times/basic-tme-transformer/tme"
 	"github.com/Financial-Times/http-handlers-go/httphandlers"
@@ -109,6 +111,12 @@ func main() {
 		Desc:   "Endpoint for the concept RW app.",
 		EnvVar: "WRITER_ENDPOINT",
 	})
+	writerWorkers := app.Int(cli.IntOpt{
+		Name:   "writerEndpoint",
+		Value:  100,
+		Desc:   "Number of workers writing to the writer endpoint.",
+		EnvVar: "WRITER_WORKERS",
+	})
 
 	app.Action = func() {
 
@@ -118,14 +126,13 @@ func main() {
 		}
 		log.SetLevel(lvl)
 
-		client := getResilientClient()
+		client := getResilientClient(*writerWorkers)
 		baseftrwapp.OutputMetricsIfRequired(*graphiteTCPAddress, *graphitePrefix, *logMetrics)
 
-		//log.SetFormatter(&log.JSONFormatter{})
+		wURL, _ := url.Parse(*writerEndpoint)
+		wURL.User = nil
+
 		log.WithFields(log.Fields{
-			"tmeUsername":        *tmeUsername,
-			"tmePassword":        *tmePassword,
-			"tmeToken":           *tmeToken,
 			"tmeBaseURL":         *tmeBaseURL,
 			"maxRecords":         *maxRecords,
 			"batchSize":          *batchSize,
@@ -136,7 +143,8 @@ func main() {
 			"graphitePrefix":     *graphitePrefix,
 			"logMetrics":         *graphitePrefix,
 			"logLevel":           *logLevel,
-			"writerEndpoint":     *writerEndpoint,
+			"writerEndpoint":     wURL,
+			"writerWorkers":      *writerWorkers,
 		}).Info("Starting with variables")
 
 		modelTransformer := new(tme.Transformer)
@@ -155,7 +163,7 @@ func main() {
 				modelTransformer)
 		}
 
-		service := tme.NewService(repos, *cacheFileName, client, *baseURL, *maxRecords, *writerEndpoint)
+		service := tme.NewService(repos, *cacheFileName, client, *baseURL, *maxRecords, *writerEndpoint, *writerWorkers)
 
 		th := tme.NewHandler(service)
 		buildRoutes(th)
@@ -167,18 +175,19 @@ func main() {
 	app.Run(os.Args)
 }
 
-func getResilientClient() *pester.Client {
-	tr := &http.Transport{
-		MaxIdleConnsPerHost: 32,
-		MaxIdleConns:        32,
-		Dial: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).Dial,
-	}
+var spareWorkers int = 10
+
+func getResilientClient(writerWorkers int) *pester.Client {
 	c := &http.Client{
-		Transport: tr,
-		Timeout:   30 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: writerWorkers + spareWorkers,
+			MaxIdleConns:        writerWorkers + spareWorkers,
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+		},
+		Timeout: 30 * time.Second,
 	}
 	client := pester.NewExtendedClient(c)
 	client.Backoff = pester.ExponentialBackoff

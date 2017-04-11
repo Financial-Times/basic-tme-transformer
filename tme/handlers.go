@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"strings"
+
+	"github.com/Financial-Times/transactionid-utils-go"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 )
@@ -123,19 +126,15 @@ func (th *Handler) HandleSendConcepts(resp http.ResponseWriter, req *http.Reques
 		writeJSONMessageWithStatus(resp, fmt.Sprintf("Taxonomy %s is not supported", t), http.StatusBadRequest)
 		return
 	}
+	jobID := strings.Replace(transactionidutils.NewTransactionID(), "tid", "job", -1)
 
-	jobID, successCount, errorCount, err := th.service.sendConcepts(t)
-	if err != nil {
-		resp.Header().Add("Content-Type", "application/json")
-		writeJSONMessageWithStatus(resp, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	resp.WriteHeader(http.StatusOK)
-	//fmt.Fprintln(resp, fmt.Sprintf("{\"jobID\": \"%s\"}", jobID))
-	writeJSONResponse(map[string]string{
-		"jobID":        jobID,
-		"successCount": string(successCount),
-		"errorCount":   string(errorCount),
+	go func(th *Handler, t string, jobID string) {
+		th.service.sendConcepts(t, jobID)
+	}(th, t, jobID)
+
+	resp.WriteHeader(http.StatusAccepted)
+	writeJSONResponse(map[string]interface{}{
+		"jobID": jobID,
 	}, true, t, resp)
 
 }

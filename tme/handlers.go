@@ -11,14 +11,15 @@ import (
 
 	"github.com/Financial-Times/transactionid-utils-go"
 	log "github.com/Sirupsen/logrus"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
 type Handler struct {
-	service *Service
+	service Service
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(service Service) *Handler {
 	return &Handler{
 		service: service,
 	}
@@ -28,13 +29,7 @@ func (th *Handler) HandleGetFullTaxonomy(resp http.ResponseWriter, req *http.Req
 	vars := mux.Vars(req)
 	t := vars["type"]
 
-	if c := th.service.checkAllLoaded(); !c {
-		resp.Header().Set("Content-Type", "application/json")
-		writeJSONMessageWithStatus(resp, "Data is not loaded", http.StatusServiceUnavailable)
-		return
-	}
-
-	pv, err := th.service.getAllConcepts(t)
+	pv, err := th.service.GetAllConcepts(t)
 
 	if err != nil {
 		writeJSONMessageWithStatus(resp, err.Error(), http.StatusInternalServerError)
@@ -50,17 +45,12 @@ func (th *Handler) HandleGetSingleConcept(resp http.ResponseWriter, req *http.Re
 	t := vars["type"]
 	uuid := vars["uuid"]
 
-	if c := th.service.checkAllLoaded(); !c {
-		resp.Header().Set("Content-Type", "application/json")
-		writeJSONMessageWithStatus(resp, "Data is not loaded", http.StatusServiceUnavailable)
-		return
-	}
-
 	resp.Header().Add("Content-Type", "application/json")
 
-	obj, found, err := th.service.getConceptByUUID(t, uuid)
+	obj, found, err := th.service.GetConceptByUUID(t, uuid)
 	if err != nil {
 		writeJSONMessageWithStatus(resp, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	writeJSONResponse(obj, found, EndpointTypeMappings[t]["type"].(string), resp)
 }
@@ -69,13 +59,7 @@ func (th *Handler) GetIDs(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	t := vars["type"]
 
-	if c := th.service.checkAllLoaded(); !c {
-		resp.Header().Set("Content-Type", "application/json")
-		writeJSONMessageWithStatus(resp, "Data is not loaded", http.StatusServiceUnavailable)
-		return
-	}
-
-	pv, err := th.service.getConceptUUIDs(t)
+	pv, err := th.service.GetConceptUUIDs(t)
 
 	if err != nil {
 		writeJSONMessageWithStatus(resp, err.Error(), http.StatusInternalServerError)
@@ -90,19 +74,7 @@ func (th *Handler) GetCount(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	t := vars["type"]
 
-	if c := th.service.checkAllLoaded(); !c {
-		resp.Header().Set("Content-Type", "application/json")
-		writeJSONMessageWithStatus(resp, "Data is not loaded", http.StatusServiceUnavailable)
-		return
-	}
-
-	if _, ok := EndpointTypeMappings[t]["type"]; !ok {
-		resp.Header().Add("Content-Type", "application/json")
-		writeJSONMessageWithStatus(resp, fmt.Sprintf("Taxonomy %s is not supported", t), http.StatusBadRequest)
-		return
-	}
-
-	count, err := th.service.getCount(t)
+	count, err := th.service.GetCount(t)
 	if err != nil {
 		resp.Header().Add("Content-Type", "application/json")
 		writeJSONMessageWithStatus(resp, err.Error(), http.StatusInternalServerError)
@@ -115,21 +87,10 @@ func (th *Handler) HandleSendConcepts(resp http.ResponseWriter, req *http.Reques
 	vars := mux.Vars(req)
 	t := vars["type"]
 
-	if c := th.service.checkAllLoaded(); !c {
-		resp.Header().Set("Content-Type", "application/json")
-		writeJSONMessageWithStatus(resp, "Data is not loaded", http.StatusServiceUnavailable)
-		return
-	}
-
-	if _, ok := EndpointTypeMappings[t]["type"]; !ok {
-		resp.Header().Add("Content-Type", "application/json")
-		writeJSONMessageWithStatus(resp, fmt.Sprintf("Taxonomy %s is not supported", t), http.StatusBadRequest)
-		return
-	}
 	jobID := strings.Replace(transactionidutils.NewTransactionID(), "tid", "job", -1)
 
 	go func(th *Handler, t string, jobID string) {
-		th.service.sendConcepts(t, jobID)
+		th.service.SendConcepts(t, jobID)
 	}(th, t, jobID)
 
 	resp.WriteHeader(http.StatusAccepted)
@@ -156,4 +117,38 @@ func writeJSONResponse(obj interface{}, found bool, theType string, writer http.
 		writeJSONMessageWithStatus(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func Router(th *Handler) *mux.Router {
+	servicesRouter := mux.NewRouter()
+
+	getFullHandler := handlers.MethodHandler{
+		"GET": th.EnforceDataLoaded(th.EnforceTaxonomy(http.HandlerFunc(th.HandleGetFullTaxonomy))),
+	}
+
+	getSingleHandler := handlers.MethodHandler{
+		"GET": th.EnforceDataLoaded(th.EnforceTaxonomy(http.HandlerFunc(th.HandleGetSingleConcept))),
+	}
+
+	countHandler := handlers.MethodHandler{
+		"GET": th.EnforceDataLoaded(th.EnforceTaxonomy(http.HandlerFunc(th.GetCount))),
+	}
+
+	getIDsHandler := handlers.MethodHandler{
+		"GET": th.EnforceDataLoaded(th.EnforceTaxonomy(http.HandlerFunc(th.GetIDs))),
+	}
+
+	sendConceptsHandler := handlers.MethodHandler{
+		"POST": th.EnforceDataLoaded(th.EnforceTaxonomy(http.HandlerFunc(th.HandleSendConcepts))),
+	}
+
+	servicesRouter.Handle("/transformers/{type}", getFullHandler)
+	servicesRouter.Handle("/transformers/{type}/__count", countHandler)
+	servicesRouter.Handle("/transformers/{type}/__ids", getIDsHandler)
+	servicesRouter.Handle("/transformers/{type}/send", sendConceptsHandler)
+
+	servicesRouter.Handle("/transformers/{type}/{uuid}", getSingleHandler)
+	//servicesRouter.Handle("/transformers/{type}/{uuid:?([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})}", getSingleHandler)
+	return servicesRouter
+
 }

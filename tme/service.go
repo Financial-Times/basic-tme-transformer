@@ -2,6 +2,7 @@ package tme
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,7 +21,16 @@ type httpClient interface {
 	Do(req *http.Request) (resp *http.Response, err error)
 }
 
-type Service struct {
+type Service interface {
+	IsDataLoaded() bool
+	GetCount(endpoint string) (int, error)
+	GetAllConcepts(endpoint string) (io.PipeReader, error)
+	GetConceptByUUID(endpoint, uuid string) (BasicConcept, bool, error)
+	GetConceptUUIDs(endpoint string) (io.PipeReader, error)
+	SendConcepts(endpoint, jobID string) error
+}
+
+type ServiceImpl struct {
 	sync.RWMutex
 	repos          map[string]tmereader.Repository
 	cacheFileName  string
@@ -33,8 +43,8 @@ type Service struct {
 	writerWorkers  int
 }
 
-func NewService(repos map[string]tmereader.Repository, cacheFilename string, httpClient httpClient, baseURL string, maxTmeRecords int, writerEndpoint string, writerWorkers int) *Service {
-	svc := &Service{
+func NewService(repos map[string]tmereader.Repository, cacheFilename string, httpClient httpClient, baseURL string, maxTmeRecords int, writerEndpoint string, writerWorkers int) Service {
+	svc := &ServiceImpl{
 		repos:          repos,
 		cacheFileName:  cacheFilename,
 		httpClient:     httpClient,
@@ -43,7 +53,7 @@ func NewService(repos map[string]tmereader.Repository, cacheFilename string, htt
 		writerEndpoint: writerEndpoint,
 		writerWorkers:  writerWorkers,
 	}
-	go func(service *Service) {
+	go func(service *ServiceImpl) {
 		err := service.loadDB()
 		if err != nil {
 			log.Errorf("Error while creating service: [%v]", err.Error())
@@ -52,19 +62,19 @@ func NewService(repos map[string]tmereader.Repository, cacheFilename string, htt
 	return svc
 }
 
-func (s *Service) isDataLoaded() bool {
+func (s *ServiceImpl) IsDataLoaded() bool {
 	s.RLock()
 	defer s.RUnlock()
 	return s.dataLoaded
 }
 
-func (s *Service) setDataLoaded(val bool) {
+func (s *ServiceImpl) setDataLoaded(val bool) {
 	s.Lock()
 	s.dataLoaded = val
 	s.Unlock()
 }
 
-func (s *Service) openDB() error {
+func (s *ServiceImpl) openDB() error {
 	s.Lock()
 	defer s.Unlock()
 	log.Infof("Opening database '%v'.", s.cacheFileName)
@@ -78,103 +88,126 @@ func (s *Service) openDB() error {
 	return nil
 }
 
-func (s *Service) loadDB() error {
+func (s *ServiceImpl) loadDB() error {
 	s.setDataLoaded(false)
-	wgl := make(map[string]*sync.WaitGroup)
-	processingChannels := make(map[string]chan []BasicConcept)
 	log.Info("Loading DB...")
 
 	if err := s.openDB(); err != nil {
 		return err
 	}
 
-	for k := range EndpointTypeMappings {
-		err := s.createCacheBucket(k)
-		log.Infof("Loading %s", k)
+	var wg sync.WaitGroup
+	wg.Add(len(s.repos))
+	for k := range s.repos {
+		go s.loadConcept(k, s.repos[k], &wg)
+	}
+	wg.Wait()
+	s.setDataLoaded(true)
+	log.Info("Completed DB load.")
+	return nil
+}
+
+func (s *ServiceImpl) loadConcept(endpoint string, repo tmereader.Repository, wg *sync.WaitGroup) error {
+	log.Infof("Loading %s", endpoint)
+	err := s.createCacheBucket(endpoint)
+	if err != nil {
+		return err
+	}
+
+	var fullTerms []interface{}
+
+	responseCount := 0
+	for {
+		terms, err := repo.GetTmeTermsFromIndex(responseCount)
 		if err != nil {
 			return err
 		}
 
-		processingChannels[k] = make(chan []BasicConcept)
-		wgl[k] = new(sync.WaitGroup)
-		go s.processConcepts(processingChannels[k], k, wgl[k])
-		defer func(w *sync.WaitGroup, c chan []BasicConcept) {
-			close(c)
-			w.Wait()
-		}(wgl[k], processingChannels[k])
+		if len(terms) < 1 {
+			log.Infof("Fetched %d %s from TME.", len(fullTerms), endpoint)
+			break
+		}
+		log.Infof("Found %d %s.", len(terms), endpoint)
+		responseCount += s.maxTmeRecords
+		fullTerms = append(fullTerms, terms...)
+	}
 
-		responseCount := 0
-		for {
-			terms, err := s.repos[k].GetTmeTermsFromIndex(responseCount)
+	if err := s.db.Batch(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(endpoint))
+		if bucket == nil {
+			return fmt.Errorf("Cache bucket [%v] not found!", endpoint)
+		}
+		for _, t := range fullTerms {
+			concept := transformConcept(t.(Term), endpoint)
+			marshalledConcept, err := json.Marshal(concept)
 			if err != nil {
 				return err
 			}
-			if len(terms) < 1 {
-				log.Infof("Finished fetching %s from TME. Waiting subroutines to terminate.", k)
-				break
+			err = bucket.Put([]byte(concept.UUID), marshalledConcept)
+			if err != nil {
+				return err
 			}
-
-			wgl[k].Add(1)
-			s.processTerms(terms, k, processingChannels[k])
-			responseCount += s.maxTmeRecords
 		}
+		return nil
+	}); err != nil {
+		log.Errorf("Error storing to cache: %+v.", err)
 	}
-
+	log.Infof("Finished processing %s", endpoint)
+	wg.Done()
 	return nil
 }
 
-func (s *Service) checkAllLoaded() bool {
+func (s *ServiceImpl) CheckAllLoaded() bool {
 	for k := range EndpointTypeMappings {
-		if i, _ := s.getCount(k); i <= 0 {
+		if i, _ := s.GetCount(k); i <= 0 {
 			return false
 		}
 	}
 	return true
 }
 
-func (s *Service) processTerms(terms []interface{}, taxonomy string, c chan<- []BasicConcept) {
-	log.Infof("Processing %s...", taxonomy)
-	var cacheToBeWritten []BasicConcept
-	for _, iTerm := range terms {
-		t := iTerm.(Term)
-		cacheToBeWritten = append(cacheToBeWritten, transformConcept(t, taxonomy))
-	}
-	c <- cacheToBeWritten
-}
+//func (s *ServiceImpl) processTerms(terms []interface{}, endpoint string, c chan<- []BasicConcept) {
+//	log.Infof("Processing %s...", endpoint)
+//	var cacheToBeWritten []BasicConcept
+//	for _, iTerm := range terms {
+//		t := iTerm.(Term)
+//		cacheToBeWritten = append(cacheToBeWritten, transformConcept(t, endpoint))
+//	}
+//	c <- cacheToBeWritten
+//}
+//
+//func (s *ServiceImpl) processConcepts(c <-chan []BasicConcept, taxonomy string, wg *sync.WaitGroup) {
+//	for concepts := range c {
+//		log.Infof("Processing batch of %v %s.", len(concepts), taxonomy)
+//		if err := s.db.Batch(func(tx *bolt.Tx) error {
+//			bucket := tx.Bucket([]byte(taxonomy))
+//			if bucket == nil {
+//				return fmt.Errorf("Cache bucket [%v] not found!", taxonomy)
+//			}
+//			for _, aConcept := range concepts {
+//				marshalledConcept, err := json.Marshal(aConcept)
+//				if err != nil {
+//					return err
+//				}
+//				err = bucket.Put([]byte(aConcept.UUID), marshalledConcept)
+//				if err != nil {
+//					return err
+//				}
+//			}
+//			return nil
+//		}); err != nil {
+//			log.Errorf("Error storing to cache: %+v.", err)
+//		}
+//		wg.Done()
+//	}
+//
+//	log.Infof("Finished processing all %s.", taxonomy)
+//}
 
-func (s *Service) processConcepts(c <-chan []BasicConcept, taxonomy string, wg *sync.WaitGroup) {
-	for concepts := range c {
-		log.Infof("Processing batch of %v %s.", len(concepts), taxonomy)
-		if err := s.db.Batch(func(tx *bolt.Tx) error {
-			bucket := tx.Bucket([]byte(taxonomy))
-			if bucket == nil {
-				return fmt.Errorf("Cache bucket [%v] not found!", taxonomy)
-			}
-			for _, aConcept := range concepts {
-				marshalledConcept, err := json.Marshal(aConcept)
-				if err != nil {
-					return err
-				}
-				err = bucket.Put([]byte(aConcept.UUID), marshalledConcept)
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		}); err != nil {
-			log.Errorf("Error storing to cache: %+v.", err)
-		}
-		wg.Done()
-	}
-
-	log.Infof("Finished processing all %s.", taxonomy)
-	s.setDataLoaded(true)
-}
-
-func (s *Service) createCacheBucket(taxonomy string) error {
+func (s *ServiceImpl) createCacheBucket(taxonomy string) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		if tx.Bucket([]byte(taxonomy)) != nil {
-			log.Infof("Deleting bucket '%v'.", taxonomy)
+			log.Debugf("Deleting bucket '%v'.", taxonomy)
 			if err := tx.DeleteBucket([]byte(taxonomy)); err != nil {
 				log.Warnf("Cache bucket [%v] could not be deleted.", taxonomy)
 			}
@@ -185,11 +218,11 @@ func (s *Service) createCacheBucket(taxonomy string) error {
 	})
 }
 
-func (s *Service) getCount(endpoint string) (int, error) {
+func (s *ServiceImpl) GetCount(endpoint string) (int, error) {
 	s.RLock()
 	defer s.RUnlock()
-	if !s.isDataLoaded() {
-		return 0, nil
+	if !s.IsDataLoaded() {
+		return 0, errors.New("Data not loaded")
 	}
 
 	var count int
@@ -204,7 +237,7 @@ func (s *Service) getCount(endpoint string) (int, error) {
 	return count, err
 }
 
-func (s *Service) getAllConcepts(endpoint string) (io.PipeReader, error) {
+func (s *ServiceImpl) GetAllConcepts(endpoint string) (io.PipeReader, error) {
 	s.RLock()
 	pv, pw := io.Pipe()
 	go func() {
@@ -225,7 +258,7 @@ func (s *Service) getAllConcepts(endpoint string) (io.PipeReader, error) {
 	return *pv, nil
 }
 
-func (s *Service) getConceptByUUID(endpoint, uuid string) (BasicConcept, bool, error) {
+func (s *ServiceImpl) GetConceptByUUID(endpoint, uuid string) (BasicConcept, bool, error) {
 	s.RLock()
 	defer s.RUnlock()
 	var cachedValue []byte
@@ -255,7 +288,7 @@ func (s *Service) getConceptByUUID(endpoint, uuid string) (BasicConcept, bool, e
 	return cachedConcept, true, nil
 }
 
-func (s *Service) getConceptUUIDs(endpoint string) (io.PipeReader, error) {
+func (s *ServiceImpl) GetConceptUUIDs(endpoint string) (io.PipeReader, error) {
 	s.RLock()
 	pv, pw := io.Pipe()
 	go func() {
@@ -293,7 +326,7 @@ type conceptRequest struct {
 	payload string
 }
 
-func (s *Service) sendConcepts(endpoint, jobID string) error {
+func (s *ServiceImpl) SendConcepts(endpoint, jobID string) error {
 
 	responseChannel := make(chan conceptResponse)
 	requestChannel := make(chan conceptRequest)
@@ -348,7 +381,7 @@ func (s *Service) sendConcepts(endpoint, jobID string) error {
 	return err
 }
 
-func (s *Service) writeWorker(wg sync.WaitGroup, requestChannel <-chan conceptRequest, responseChannel chan<- conceptResponse) {
+func (s *ServiceImpl) writeWorker(wg sync.WaitGroup, requestChannel <-chan conceptRequest, responseChannel chan<- conceptResponse) {
 	for req := range requestChannel {
 		err := s.sendSingleConcept(req.theType, req.uuid, req.payload, req.jobID)
 		responseChannel <- conceptResponse{
@@ -360,7 +393,7 @@ func (s *Service) writeWorker(wg sync.WaitGroup, requestChannel <-chan conceptRe
 	wg.Done()
 }
 
-func (s *Service) sendSingleConcept(endpoint, uuid, payload, transactionID string) error {
+func (s *ServiceImpl) sendSingleConcept(endpoint, uuid, payload, transactionID string) error {
 	fullURL, err := url.Parse(s.writerEndpoint + "/" + uuid)
 	if err != nil {
 		log.Errorf("Error parsing url %s: %s", s.writerEndpoint+"/"+endpoint+"/"+uuid, err)

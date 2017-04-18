@@ -23,5 +23,6 @@ _testmain.go
 *.test
 *.prof
 
-cache.db
+cache
 basic-tme-transformer
+cache.db

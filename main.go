@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
-
-	"net/url"
 
 	"github.com/Financial-Times/base-ft-rw-app-go/baseftrwapp"
 	"github.com/Financial-Times/basic-tme-transformer/tme"
@@ -15,8 +14,6 @@ import (
 	status "github.com/Financial-Times/service-status-go/httphandlers"
 	"github.com/Financial-Times/tme-reader/tmereader"
 	log "github.com/Sirupsen/logrus"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
 	_ "github.com/joho/godotenv/autoload"
 	metrics "github.com/rcrowley/go-metrics"
@@ -198,33 +195,7 @@ func getResilientClient(writerWorkers int) *pester.Client {
 }
 
 func buildRoutes(th *tme.Handler) {
-	servicesRouter := mux.NewRouter()
-
-	getFullHandler := handlers.MethodHandler{
-		"GET": http.HandlerFunc(th.HandleGetFullTaxonomy),
-	}
-
-	getSingleHandler := handlers.MethodHandler{
-		"GET": http.HandlerFunc(th.HandleGetSingleConcept),
-	}
-
-	countHandler := handlers.MethodHandler{
-		"GET": http.HandlerFunc(th.GetCount),
-	}
-
-	getIDsHandler := handlers.MethodHandler{
-		"GET": http.HandlerFunc(th.GetIDs),
-	}
-
-	sendConceptsHandler := handlers.MethodHandler{
-		"POST": http.HandlerFunc(th.HandleSendConcepts),
-	}
-
-	servicesRouter.Handle("/transformers/{type}", getFullHandler)
-	servicesRouter.Handle("/transformers/{type}/__count", countHandler)
-	servicesRouter.Handle("/transformers/{type}/__ids", getIDsHandler)
-	servicesRouter.Handle("/transformers/{type}/send", sendConceptsHandler)
-	servicesRouter.Handle("/transformers/{type}/{uuid:?([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})}", getSingleHandler)
+	servicesRouter := tme.Router(th)
 
 	var monitoringRouter http.Handler = servicesRouter
 	monitoringRouter = httphandlers.TransactionAwareRequestLoggingHandler(log.StandardLogger(), monitoringRouter)

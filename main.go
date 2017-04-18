@@ -10,7 +10,9 @@ import (
 
 	"github.com/Financial-Times/base-ft-rw-app-go/baseftrwapp"
 	"github.com/Financial-Times/basic-tme-transformer/tme"
+	"github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/Financial-Times/http-handlers-go/httphandlers"
+	"github.com/Financial-Times/service-status-go/gtg"
 	status "github.com/Financial-Times/service-status-go/httphandlers"
 	"github.com/Financial-Times/tme-reader/tmereader"
 	log "github.com/Sirupsen/logrus"
@@ -202,5 +204,8 @@ func buildRoutes(th *tme.Handler) {
 	monitoringRouter = httphandlers.HTTPMetricsHandler(metrics.DefaultRegistry, monitoringRouter)
 
 	http.HandleFunc(status.BuildInfoPath, status.BuildInfoHandler)
+
+	http.HandleFunc("/__health", v1a.Handler("V1 People Transformer Healthchecks", "Checks for the health of the service", th.HealthCheck()))
+	http.HandleFunc(status.GTGPath, status.NewGoodToGoHandler(gtg.StatusChecker(th.G2GCheck)))
 	http.Handle("/", monitoringRouter)
 }

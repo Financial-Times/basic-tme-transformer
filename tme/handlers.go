@@ -9,10 +9,13 @@ import (
 
 	"strings"
 
+	"github.com/Financial-Times/go-fthealth/v1a"
+	"github.com/Financial-Times/service-status-go/gtg"
 	"github.com/Financial-Times/transactionid-utils-go"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 type Handler struct {
@@ -100,7 +103,7 @@ func (th *Handler) HandleSendConcepts(resp http.ResponseWriter, req *http.Reques
 
 }
 
-func (th *Handler) HandleReloadConcepts(resp http.ResponseWriter, req *http.Request){
+func (th *Handler) HandleReloadConcepts(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	t := vars["type"]
 	go th.service.Reload(t)
@@ -125,6 +128,29 @@ func writeJSONResponse(obj interface{}, found bool, theType string, writer http.
 		writeJSONMessageWithStatus(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (th *Handler) HealthCheck() v1a.Check {
+	return v1a.Check{
+		BusinessImpact:   "Unable to respond to requests",
+		Name:             "Check service has finished initilising.",
+		PanicGuide:       "https://dewey.ft.com/basic-tme-transformer.html",
+		Severity:         1,
+		TechnicalSummary: "Cannot serve any content as data not loaded.",
+		Checker: func() (string, error) {
+			if !th.service.IsDataLoaded() {
+				return "Data is not loaded", errors.New("Data is not loaded")
+			}
+			return "Service is up and running", nil
+		},
+	}
+}
+
+func (th *Handler) G2GCheck() gtg.Status {
+	if th.service.IsDataLoaded() {
+		return gtg.Status{GoodToGo: true}
+	}
+	return gtg.Status{GoodToGo: false}
 }
 
 func Router(th *Handler) *mux.Router {

@@ -28,6 +28,7 @@ type Service interface {
 	GetConceptByUUID(endpoint, uuid string) (BasicConcept, bool, error)
 	GetConceptUUIDs(endpoint string) (io.PipeReader, error)
 	SendConcepts(endpoint, jobID string) error
+	Reload(endpoint string) error
 }
 
 type ServiceImpl struct {
@@ -85,6 +86,26 @@ func (s *ServiceImpl) openDB() error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (s *ServiceImpl) Reload(endpoint string) error {
+	log.Infof("Reloading %s", endpoint)
+	s.setDataLoaded(false)
+	if err := s.openDB(); err != nil {
+		return err
+	}
+	r, ok := s.repos[endpoint]
+	if !ok {
+		return errors.New("Endpoint invalid")
+	}
+
+	err := s.loadConcept(endpoint, r, nil)
+	if err != nil {
+		return err
+	}
+	s.setDataLoaded(true)
+	log.Infof("Completed %s load", endpoint)
 	return nil
 }
 
@@ -153,7 +174,9 @@ func (s *ServiceImpl) loadConcept(endpoint string, repo tmereader.Repository, wg
 		log.Errorf("Error storing to cache: %+v.", err)
 	}
 	log.Infof("Finished processing %s", endpoint)
-	wg.Done()
+	if wg != nil {
+		wg.Done()
+	}
 	return nil
 }
 

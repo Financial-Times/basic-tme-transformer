@@ -100,6 +100,14 @@ func (th *Handler) HandleSendConcepts(resp http.ResponseWriter, req *http.Reques
 
 }
 
+func (th *Handler) HandleReloadConcepts(resp http.ResponseWriter, req *http.Request){
+	vars := mux.Vars(req)
+	t := vars["type"]
+	go th.service.Reload(t)
+
+	writeJSONMessageWithStatus(resp, fmt.Sprintf("Reloading %s", t), http.StatusAccepted)
+}
+
 func writeJSONMessageWithStatus(w http.ResponseWriter, msg string, statusCode int) {
 	w.WriteHeader(statusCode)
 	fmt.Fprintln(w, fmt.Sprintf("{\"message\": \"%s\"}", msg))
@@ -142,9 +150,14 @@ func Router(th *Handler) *mux.Router {
 		"POST": th.EnforceDataLoaded(th.EnforceTaxonomy(http.HandlerFunc(th.HandleSendConcepts))),
 	}
 
+	reloadConceptsHandler := handlers.MethodHandler{
+		"POST": th.EnforceTaxonomy(http.HandlerFunc(th.HandleReloadConcepts)),
+	}
+
 	servicesRouter.Handle("/transformers/{type}", getFullHandler)
 	servicesRouter.Handle("/transformers/{type}/__count", countHandler)
 	servicesRouter.Handle("/transformers/{type}/__ids", getIDsHandler)
+	servicesRouter.Handle("/transformers/{type}/__reload", reloadConceptsHandler)
 	servicesRouter.Handle("/transformers/{type}/send", sendConceptsHandler)
 
 	servicesRouter.Handle("/transformers/{type}/{uuid}", getSingleHandler)

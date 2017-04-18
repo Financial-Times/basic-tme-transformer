@@ -34,6 +34,10 @@ func (ms *MockService) GetCount(endpoint string) (int, error) {
 	return len(ms.db[endpoint]), ms.err
 }
 
+func (ms *MockService) Reload(endpoint string) error {
+	return ms.err
+}
+
 func (ms *MockService) GetAllConcepts(endpoint string) (io.PipeReader, error) {
 	pr, pw := io.Pipe()
 	go func() {
@@ -239,6 +243,23 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 			true,
 			404,
 			"{\"message\": \"Genre not found\"}\n",
+			nil,
+			map[string]map[string]BasicConcept{
+				"genres": {
+					"2a88a647-59bc-4043-8f1b-5add71ddf3dc": {
+						UUID:      "2a88a647-59bc-4043-8f1b-5add71ddf3dc",
+						PrefLabel: "Test",
+					},
+				},
+			},
+		},
+		{
+			"Success - Reload Concept",
+			"POST",
+			"/transformers/genres/__reload",
+			true,
+			202,
+			"{\"message\": \"Reloading genres\"}\n",
 			nil,
 			map[string]map[string]BasicConcept{
 				"genres": {

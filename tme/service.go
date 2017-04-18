@@ -157,53 +157,6 @@ func (s *ServiceImpl) loadConcept(endpoint string, repo tmereader.Repository, wg
 	return nil
 }
 
-func (s *ServiceImpl) CheckAllLoaded() bool {
-	for k := range EndpointTypeMappings {
-		if i, _ := s.GetCount(k); i <= 0 {
-			return false
-		}
-	}
-	return true
-}
-
-//func (s *ServiceImpl) processTerms(terms []interface{}, endpoint string, c chan<- []BasicConcept) {
-//	log.Infof("Processing %s...", endpoint)
-//	var cacheToBeWritten []BasicConcept
-//	for _, iTerm := range terms {
-//		t := iTerm.(Term)
-//		cacheToBeWritten = append(cacheToBeWritten, transformConcept(t, endpoint))
-//	}
-//	c <- cacheToBeWritten
-//}
-//
-//func (s *ServiceImpl) processConcepts(c <-chan []BasicConcept, taxonomy string, wg *sync.WaitGroup) {
-//	for concepts := range c {
-//		log.Infof("Processing batch of %v %s.", len(concepts), taxonomy)
-//		if err := s.db.Batch(func(tx *bolt.Tx) error {
-//			bucket := tx.Bucket([]byte(taxonomy))
-//			if bucket == nil {
-//				return fmt.Errorf("Cache bucket [%v] not found!", taxonomy)
-//			}
-//			for _, aConcept := range concepts {
-//				marshalledConcept, err := json.Marshal(aConcept)
-//				if err != nil {
-//					return err
-//				}
-//				err = bucket.Put([]byte(aConcept.UUID), marshalledConcept)
-//				if err != nil {
-//					return err
-//				}
-//			}
-//			return nil
-//		}); err != nil {
-//			log.Errorf("Error storing to cache: %+v.", err)
-//		}
-//		wg.Done()
-//	}
-//
-//	log.Infof("Finished processing all %s.", taxonomy)
-//}
-
 func (s *ServiceImpl) createCacheBucket(taxonomy string) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		if tx.Bucket([]byte(taxonomy)) != nil {
@@ -240,11 +193,15 @@ func (s *ServiceImpl) GetCount(endpoint string) (int, error) {
 func (s *ServiceImpl) GetAllConcepts(endpoint string) (io.PipeReader, error) {
 	s.RLock()
 	pv, pw := io.Pipe()
+
 	go func() {
 		defer s.RUnlock()
 		defer pw.Close()
 		s.db.View(func(tx *bolt.Tx) error {
 			b := tx.Bucket([]byte(endpoint))
+			if b == nil {
+				return fmt.Errorf("Bucket %v not found!", endpoint)
+			}
 			c := b.Cursor()
 			for k, v := c.First(); k != nil; k, v = c.Next() {
 				if _, err := pw.Write(v); err != nil {
@@ -396,7 +353,7 @@ func (s *ServiceImpl) writeWorker(wg sync.WaitGroup, requestChannel <-chan conce
 func (s *ServiceImpl) sendSingleConcept(endpoint, uuid, payload, transactionID string) error {
 	fullURL, err := url.Parse(s.writerEndpoint + "/" + uuid)
 	if err != nil {
-		log.Errorf("Error parsing url %s: %s", s.writerEndpoint+"/"+endpoint+"/"+uuid, err)
+		log.Errorf("Error parsing url %s: %s", s.writerEndpoint+"/"+uuid, err)
 		return err
 	}
 	req, err := http.NewRequest("PUT", fullURL.String(), strings.NewReader(payload))
@@ -415,8 +372,7 @@ func (s *ServiceImpl) sendSingleConcept(endpoint, uuid, payload, transactionID s
 	resp, err := s.httpClient.Do(req)
 	defer resp.Body.Close()
 	if int(resp.StatusCode/100) != 2 {
-		log.Errorf("Bad response from writer [%d]: %s", resp.StatusCode, fullURL)
-		return err
+		return fmt.Errorf("Bad response from writer [%d]: %s", resp.StatusCode, fullURL)
 	}
 	return err
 }

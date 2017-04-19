@@ -205,7 +205,7 @@ func buildRoutes(th *tme.Handler) {
 
 	http.HandleFunc(status.BuildInfoPath, status.BuildInfoHandler)
 
-	http.HandleFunc("/__health", v1a.Handler("V1 People Transformer Healthchecks", "Checks for the health of the service", th.HealthCheck()))
+	http.HandleFunc("/__health", v1a.Handler("Basic TME Transformer Healthchecks", "Checks for the health of the service", th.HealthCheck()))
 	http.HandleFunc(status.GTGPath, status.NewGoodToGoHandler(gtg.StatusChecker(th.G2GCheck)))
 	http.Handle("/", monitoringRouter)
 }

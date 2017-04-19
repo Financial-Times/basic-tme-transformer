@@ -9,6 +9,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Financial-Times/go-fthealth/v1a"
+	"github.com/Financial-Times/service-status-go/gtg"
+	status "github.com/Financial-Times/service-status-go/httphandlers"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -305,4 +309,116 @@ func TestWriteJSONResponse_Error(t *testing.T) {
 	body := string(b)
 	assert.Equal(t, 500, rr.Code)
 	assert.Equal(t, "{\"message\": \"json: unsupported type: chan int\"}\n", body)
+}
+
+func TestHandler_G2GCheck_Good(t *testing.T) {
+	db := map[string]map[string]BasicConcept{
+		"genres": {
+			"2a88a647-59bc-4043-8f1b-5add71ddf3dc": {
+				UUID:      "2a88a647-59bc-4043-8f1b-5add71ddf3dc",
+				PrefLabel: "Test",
+			},
+		},
+	}
+	mockService := NewMockService(true, db, nil)
+	handler := NewHandler(mockService)
+
+	router := mux.NewRouter()
+	router.HandleFunc("/__gtg", status.NewGoodToGoHandler(gtg.StatusChecker(handler.G2GCheck)))
+
+	req, _ := http.NewRequest("GET", "/__gtg", nil)
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+	assert.Equal(t, 200, rr.Code)
+}
+
+func TestHandler_G2GCheck_Bad(t *testing.T) {
+	db := map[string]map[string]BasicConcept{
+		"genres": {
+			"2a88a647-59bc-4043-8f1b-5add71ddf3dc": {
+				UUID:      "2a88a647-59bc-4043-8f1b-5add71ddf3dc",
+				PrefLabel: "Test",
+			},
+		},
+	}
+	mockService := NewMockService(false, db, nil)
+	handler := NewHandler(mockService)
+
+	router := mux.NewRouter()
+	router.HandleFunc("/__gtg", status.NewGoodToGoHandler(gtg.StatusChecker(handler.G2GCheck)))
+
+	req, _ := http.NewRequest("GET", "/__gtg", nil)
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+	assert.Equal(t, 503, rr.Code)
+}
+
+func TestHandler_Healthcheck_Good(t *testing.T) {
+	db := map[string]map[string]BasicConcept{
+		"genres": {
+			"2a88a647-59bc-4043-8f1b-5add71ddf3dc": {
+				UUID:      "2a88a647-59bc-4043-8f1b-5add71ddf3dc",
+				PrefLabel: "Test",
+			},
+		},
+	}
+	mockService := NewMockService(true, db, nil)
+	handler := NewHandler(mockService)
+
+	router := mux.NewRouter()
+	router.HandleFunc("/__health", v1a.Handler("Basic TME Transformer Healthchecks", "Checks for the health of the service", handler.HealthCheck()))
+
+	req, _ := http.NewRequest("GET", "/__health", nil)
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+
+	b, err := ioutil.ReadAll(rr.Body)
+	assert.NoError(t, err)
+	var output struct {
+		Name string
+		OK   bool
+	}
+	err = json.Unmarshal(b, &output)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 200, rr.Code)
+	assert.Equal(t, "Basic TME Transformer Healthchecks", output.Name)
+	assert.Equal(t, true, output.OK)
+}
+
+func TestHandler_Healthcheck_Bad(t *testing.T) {
+	db := map[string]map[string]BasicConcept{
+		"genres": {
+			"2a88a647-59bc-4043-8f1b-5add71ddf3dc": {
+				UUID:      "2a88a647-59bc-4043-8f1b-5add71ddf3dc",
+				PrefLabel: "Test",
+			},
+		},
+	}
+	mockService := NewMockService(false, db, nil)
+	handler := NewHandler(mockService)
+
+	router := mux.NewRouter()
+	router.HandleFunc("/__health", v1a.Handler("Basic TME Transformer Healthchecks", "Checks for the health of the service", handler.HealthCheck()))
+
+	req, _ := http.NewRequest("GET", "/__health", nil)
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+
+	b, err := ioutil.ReadAll(rr.Body)
+	assert.NoError(t, err)
+	var output struct {
+		Name string
+		OK   bool
+	}
+	err = json.Unmarshal(b, &output)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 200, rr.Code)
+	assert.Equal(t, "Basic TME Transformer Healthchecks", output.Name)
+	assert.Equal(t, false, output.OK)
 }

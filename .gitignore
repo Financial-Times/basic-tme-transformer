@@ -26,3 +26,4 @@ _testmain.go
 cache
 basic-tme-transformer
 cache.db
+vendor/*/

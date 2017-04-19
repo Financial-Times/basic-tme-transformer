@@ -33,61 +33,70 @@ func (c mockHttpClient) Do(req *http.Request) (resp *http.Response, err error) {
 }
 
 type mockTmeRepo struct {
+	sync.Mutex
 	terms []Term
 	err   error
 	count int
 }
 
-func (t *mockTmeRepo) GetTmeTermsFromIndex(i int) ([]interface{}, error) {
+func (d *mockTmeRepo) GetTmeTermsFromIndex(startRecord int) ([]interface{}, error) {
 	defer func() {
-		t.count++
+		d.count++
 	}()
-	if len(t.terms) == t.count {
-		return nil, t.err
+	if len(d.terms) == d.count {
+		return nil, d.err
 	}
-	return []interface{}{t.terms[t.count]}, t.err
+	return []interface{}{d.terms[d.count]}, d.err
 }
 
 // Never used
-func (t *mockTmeRepo) GetTmeTermById(s string) (interface{}, error) {
+func (d *mockTmeRepo) GetTmeTermById(uuid string) (interface{}, error) {
 	return nil, nil
 }
 
-func createBasicTestService() *ServiceImpl {
-	repo := &mockTmeRepo{terms: []Term{{CanonicalName: "Bob", RawID: "bob"}, {CanonicalName: "Fred", RawID: "fred"}}}
-	return &ServiceImpl{
-		repos: map[string]tmereader.Repository{
-			"topics": repo,
-		},
-		cacheFileName: "cache",
-		httpClient: mockHttpClient{
-			statusCode: 200,
-			err:        nil,
-			resp:       "{}",
-		},
-		baseURL:        "/base/url",
-		maxTmeRecords:  1,
-		writerEndpoint: "/endpoint",
-		writerWorkers:  1,
+type blockingRepo struct {
+	sync.WaitGroup
+	err  error
+	done bool
+}
+
+func (d *blockingRepo) GetTmeTermsFromIndex(startRecord int) ([]interface{}, error) {
+	d.Wait()
+	if d.done {
+		return nil, d.err
 	}
+	d.done = true
+	return []interface{}{Term{CanonicalName: "Bob", RawID: "bob"}}, d.err
 }
 
-func TestNewService(t *testing.T) {
-	svc := createBasicTestService()
-
-	actualService := NewService(svc.repos, svc.cacheFileName, svc.httpClient, svc.baseURL,
-		svc.maxTmeRecords, svc.writerEndpoint, svc.writerWorkers)
-
-	assert.EqualValues(t, svc, actualService)
+// Never used
+func (d *blockingRepo) GetTmeTermById(uuid string) (interface{}, error) {
+	return nil, nil
 }
 
-func TestIsDataLoaded(t *testing.T) {
-	svc := createBasicTestService()
+func TestInit(t *testing.T) {
+	repo := blockingRepo{}
+	repo.Add(1)
+	repos := map[string]tmereader.Repository{
+		"topics": &repo,
+	}
+	httpClient := mockHttpClient{
+		statusCode: 200,
+		err:        nil,
+		resp:       "{}",
+	}
 
-	svc.setDataLoaded(true)
-	assert.True(t, svc.IsDataLoaded())
-	svc.setDataLoaded(false)
-	assert.False(t, svc.IsDataLoaded())
+	tmpfile := getTempFile(t)
+	defer os.Remove(tmpfile.Name())
+	service := createTestTmeService(repos, tmpfile.Name(), httpClient)
+	defer func() {
+		repo.Done()
+	}()
+	assert.False(t, service.IsDataLoaded())
+}
+
+func createTestTmeService(repos map[string]tmereader.Repository, cacheFileName string, httpClient httpClient) Service {
+	return NewService(repos, cacheFileName, httpClient, "/base/url", 1, "/writer/endpoint", 1)
 }
 
 func TestServiceImpl_GetCount(t *testing.T) {
@@ -246,7 +255,6 @@ func TestServiceImpl_SendConcepts_ServiceError(t *testing.T) {
 
 func createTestService(t *testing.T, statusCode int, clientError error) Service {
 	tmpfile := getTempFile(t)
-	defer os.Remove(tmpfile.Name())
 	repo := &mockTmeRepo{terms: []Term{{CanonicalName: "Bob", RawID: "bob"}, {CanonicalName: "Fred", RawID: "fred"}}}
 	repos := map[string]tmereader.Repository{
 		"topics": repo,

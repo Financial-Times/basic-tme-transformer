@@ -307,7 +307,8 @@ type conceptRequest struct {
 }
 
 func (s *ServiceImpl) SendConcepts(endpoint, jobID string) error {
-
+	s.RLock()
+	defer s.RUnlock()
 	responseChannel := make(chan conceptResponse)
 	requestChannel := make(chan conceptRequest)
 	var wgReq sync.WaitGroup

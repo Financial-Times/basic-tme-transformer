@@ -63,11 +63,11 @@ var EndpointTypeMappings = map[string]map[string]interface{}{
 		"source":   &tmereader.KnowledgeBases{},
 		"type":     "Genre",
 	},
-	//"locations": {
-	//	"taxonomy": "GL",
-	//	"source":   &tmereader.AuthorityFiles{},
-	//	"type":     "Location",
-	//},
+	"locations": {
+		"taxonomy": "GL",
+		"source":   &tmereader.AuthorityFiles{},
+		"type":     "Location",
+	},
 	"special-reports": {
 		"taxonomy": "SpecialReports",
 		"source":   &tmereader.AuthorityFiles{},
@@ -78,19 +78,19 @@ var EndpointTypeMappings = map[string]map[string]interface{}{
 		"source":   &tmereader.KnowledgeBases{},
 		"type":     "Topic",
 	},
-	//"subjects": {
-	//	"taxonomy": "Subjects",
-	//	"source":   &tmereader.KnowledgeBases{},
-	//	"type":     "Subject",
-	//},
-	//"sections": {
-	//	"taxonomy": "Sections",
-	//	"source":   &tmereader.KnowledgeBases{},
-	//	"type":     "Section",
-	//},
-	//"alphaville-series": {
-	//	"taxonomy": "AlphavilleSeriesClassification",
-	//	"source":   &tmereader.KnowledgeBases{},
-	//	"type":     "AlphavilleSeries",
-	//},
+	"subjects": {
+		"taxonomy": "Subjects",
+		"source":   &tmereader.KnowledgeBases{},
+		"type":     "Subject",
+	},
+	"sections": {
+		"taxonomy": "Sections",
+		"source":   &tmereader.KnowledgeBases{},
+		"type":     "Section",
+	},
+	"alphaville-series": {
+		"taxonomy": "AlphavilleSeriesClassification",
+		"source":   &tmereader.KnowledgeBases{},
+		"type":     "AlphavilleSeries",
+	},
 }

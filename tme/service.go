@@ -320,6 +320,7 @@ func (s *ServiceImpl) SendConcepts(endpoint, jobID string) error {
 			return fmt.Errorf("Bucket %v not found!", endpoint)
 		}
 
+		// This just logs errors in sending a concept.  Successes are logged in the RW app.
 		go func(responseChannel <-chan conceptResponse) {
 			for r := range responseChannel {
 				if r.response != nil {
@@ -328,6 +329,7 @@ func (s *ServiceImpl) SendConcepts(endpoint, jobID string) error {
 			}
 		}(responseChannel)
 
+		// Creates the workers.
 		wgResp.Add(s.writerWorkers)
 		for i := 0; i < s.writerWorkers; i++ {
 			go s.writeWorker(wgResp, requestChannel, responseChannel)
@@ -338,6 +340,7 @@ func (s *ServiceImpl) SendConcepts(endpoint, jobID string) error {
 			close(responseChannel)
 		}()
 
+		// Loop through and create a request for each concept.
 		wgReq.Add(bucket.Stats().KeyN)
 		err := bucket.ForEach(func(k, v []byte) error {
 			log.Debugf("Sending concept to writer [%s]: %s", jobID, k)

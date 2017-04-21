@@ -21,7 +21,7 @@ func (th *Handler) EnforceDataLoaded(next http.Handler) http.Handler {
 func (th *Handler) EnforceTaxonomy(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		t := vars["type"]
+		t := vars[endpointURLParameter]
 
 		if _, ok := EndpointTypeMappings[t]["type"]; !ok {
 			w.Header().Add("Content-Type", "application/json")

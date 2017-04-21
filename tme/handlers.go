@@ -28,9 +28,14 @@ func NewHandler(service Service) *Handler {
 	}
 }
 
+var (
+	endpointURLParameter = "endpoint"
+	uuidURLParameter     = "uuid"
+)
+
 func (th *Handler) HandleGetFullTaxonomy(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	t := vars["type"]
+	t := vars[endpointURLParameter]
 
 	pv, err := th.service.GetAllConcepts(t)
 
@@ -45,8 +50,8 @@ func (th *Handler) HandleGetFullTaxonomy(resp http.ResponseWriter, req *http.Req
 
 func (th *Handler) HandleGetSingleConcept(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	t := vars["type"]
-	uuid := vars["uuid"]
+	t := vars[endpointURLParameter]
+	uuid := vars[uuidURLParameter]
 
 	resp.Header().Add("Content-Type", "application/json")
 
@@ -60,7 +65,7 @@ func (th *Handler) HandleGetSingleConcept(resp http.ResponseWriter, req *http.Re
 
 func (th *Handler) GetIDs(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	t := vars["type"]
+	t := vars[endpointURLParameter]
 
 	pv, err := th.service.GetConceptUUIDs(t)
 
@@ -75,7 +80,7 @@ func (th *Handler) GetIDs(resp http.ResponseWriter, req *http.Request) {
 
 func (th *Handler) GetCount(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	t := vars["type"]
+	t := vars[endpointURLParameter]
 
 	count, err := th.service.GetCount(t)
 	if err != nil {
@@ -88,7 +93,7 @@ func (th *Handler) GetCount(resp http.ResponseWriter, req *http.Request) {
 
 func (th *Handler) HandleSendConcepts(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	t := vars["type"]
+	t := vars[endpointURLParameter]
 
 	jobID := strings.Replace(transactionidutils.NewTransactionID(), "tid", "job", -1)
 
@@ -105,7 +110,7 @@ func (th *Handler) HandleSendConcepts(resp http.ResponseWriter, req *http.Reques
 
 func (th *Handler) HandleReloadConcepts(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	t := vars["type"]
+	t := vars[endpointURLParameter]
 	go th.service.Reload(t)
 
 	writeJSONMessageWithStatus(resp, fmt.Sprintf("Reloading %s", t), http.StatusAccepted)
@@ -180,14 +185,12 @@ func Router(th *Handler) *mux.Router {
 		"POST": th.EnforceTaxonomy(http.HandlerFunc(th.HandleReloadConcepts)),
 	}
 
-	servicesRouter.Handle("/transformers/{type}", getFullHandler)
-	servicesRouter.Handle("/transformers/{type}/__count", countHandler)
-	servicesRouter.Handle("/transformers/{type}/__ids", getIDsHandler)
-	servicesRouter.Handle("/transformers/{type}/__reload", reloadConceptsHandler)
-	servicesRouter.Handle("/transformers/{type}/send", sendConceptsHandler)
-
-	servicesRouter.Handle("/transformers/{type}/{uuid}", getSingleHandler)
-	//servicesRouter.Handle("/transformers/{type}/{uuid:?([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})}", getSingleHandler)
+	servicesRouter.Handle("/transformers/{endpoint}", getFullHandler)
+	servicesRouter.Handle("/transformers/{endpoint}/__count", countHandler)
+	servicesRouter.Handle("/transformers/{endpoint}/__ids", getIDsHandler)
+	servicesRouter.Handle("/transformers/{endpoint}/__reload", reloadConceptsHandler)
+	servicesRouter.Handle("/transformers/{endpoint}/send", sendConceptsHandler)
+	servicesRouter.Handle("/transformers/{endpoint}/{uuid}", getSingleHandler)
 	return servicesRouter
 
 }

@@ -1,5 +1,9 @@
 # basic-tme-transformer
 
+[![CircleCI](https://circleci.com/gh/Financial-Times/basic-tme-transformer.svg?style=svg)](https://circleci.com/gh/Financial-Times/basic-tme-transformer)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Financial-Times/basic-tme-transformer)](https://goreportcard.com/report/github.com/Financial-Times/basic-tme-transformer)
+[![Coverage Status](https://coveralls.io/repos/github/Financial-Times/basic-tme-transformer/badge.svg?branch=master)](https://coveralls.io/github/Financial-Times/basic-tme-transformer?branch=master)
+
 ## Introduction
 The Basic TME Transformer generates UPP representations of TME concepts for a set of taxonomies:
 Genres, Locations, Special Reports, Topics, Subjects, Sections and Alphaville Series.

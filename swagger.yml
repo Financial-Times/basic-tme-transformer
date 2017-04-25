@@ -1,0 +1,90 @@
+swagger: "2.0"
+info:
+  description: "API specification for the basic TME transformer"
+  version: "1.0.0"
+  title: "Basic TME Transformer"
+host: api.ft.com
+schemes:
+  - http
+  - https
+basePath: /
+
+paths:
+  /transformers/{taxonomy}:
+    get:
+      summary: List all concepts
+      description: Lists all concepts in the taxonomy provided.
+      responses:
+        200:
+          description: Shows all concepts for the taxonomy provided.
+        400:
+          description: The taxonomy provided is not valid.
+        500:
+          description: Internal error retrieving the concepts from the cache.
+        503:
+          description: Data loading/reloading is in progress.
+  /transformers/{taxonomy}/{uuid}:
+    get:
+      summary: Get concept by UUID
+      description: Retrieves the concept based on the taxonomy and UUID specified in the URL.
+      responses:
+        200:
+          description: Shows the concept requested.
+        400:
+          description: The taxonomy provided is not valid.
+        404:
+          description: A concept with the UUID requested does not exist in the taxonomy cache.
+        500:
+          description: Internal error retrieving the concept from the cache.
+        503:
+          description: Data loading/reloading is in progress.
+  /transformers/{taxonomy}/send:
+    post:
+      summary: Send concepts
+      description: Sends all the concepts for the given taxonomy to the writer specified in the app config.
+      responses:
+        202:
+          description: Job has been accepted and concepts are being sent to the writer.
+        400:
+          description: The taxonomy provided is not valid.
+        500:
+          description: Internal error retrieving the concepts from the cache.
+        503:
+          description: Data loading/reloading is in progress.
+  /transformers/{taxonomy}/__count:
+    get:
+      summary: Get concept count
+      description: Returns the number of concepts in the cache for the specified taxonomy.
+      responses:
+        200:
+          description: Count is returned.
+        400:
+          description: The taxonomy provided is not valid.
+        500:
+          description: Internal error retrieving the concepts from the cache.
+        503:
+          description: Data loading/reloading is in progress.
+  /transformers/{taxonomy}/__ids:
+    get:
+      summary: Get concept IDs
+      description: Returns a list of all concept IDs for the specified taxonomy.
+      responses:
+        200:
+          description: Concept ID list is returned.
+        400:
+          description: The taxonomy provided is not valid.
+        500:
+          description: Internal error retrieving the concepts from the cache.
+        503:
+          description: Data loading/reloading is in progress.
+  /transformers/{taxonomy}/__reload:
+    post:
+      summary: Reload concept cache
+      description: Triggers a reload of the cache for the specified taxonomy from the source.
+      responses:
+        202:
+          description: Cache reload has been triggered.
+        400:
+          description: The taxonomy provided is not valid.
+        503:
+          description: Data loading/reloading is in progress.

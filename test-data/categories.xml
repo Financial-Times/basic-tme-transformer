@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<categories xmlns="http://dev.nstein.com/tme-authority-file/4.10" xmlns:c="http://dev.nstein.com/common/1.3">
+    <category>
+        <id>Nstein_GL_AFTM_GL_123456</id>
+        <name>A term</name>
+        <enabled>true</enabled>
+        <variations>
+            <variation>
+                <name>A term</name>
+                <weight>100.0</weight>
+                <case>ucs</case>
+                <accent>ai</accent>
+                <languages>
+                    <language>und</language>
+                </languages>
+            </variation>
+        </variations>
+        <relations>
+            <relation>
+                <id>Nstein_GL_YE</id>
+                <type>BT</type>
+            </relation>
+        </relations>
+        <attributes>
+            <attribute>
+                <name>Type</name>
+                <values>
+                    <value>GOVERNORATE</value>
+                </values>
+            </attribute>
+            <attribute>
+                <name>UN</name>
+                <values>
+                    <value>A term</value>
+                </values>
+            </attribute>
+        </attributes>
+    </category>
+</categories>

@@ -1,11 +1,12 @@
 package tme
 
 type BasicConcept struct {
-	UUID           string `json:"uuid"`
-	PrefLabel      string `json:"prefLabel,omitempty"`
-	Type           string `json:"type,omitempty"`
-	Authority      string `json:"authority,omitempty"`
-	AuthorityValue string `json:"authorityValue,omitempty"`
+	UUID           string   `json:"uuid"`
+	PrefLabel      string   `json:"prefLabel,omitempty"`
+	Type           string   `json:"type,omitempty"`
+	Authority      string   `json:"authority,omitempty"`
+	AuthorityValue string   `json:"authorityValue,omitempty"`
+	Aliases        []string `json:"aliases,omitempty"`
 }
 
 type ConceptUUID struct {
@@ -18,6 +19,15 @@ type Taxonomy struct {
 }
 
 type Term struct {
-	CanonicalName string `xml:"name"`
-	RawID         string `xml:"id"`
+	CanonicalName string  `xml:"name"`
+	RawID         string  `xml:"id"`
+	Aliases       aliases `xml:"variations"`
+}
+
+type aliases struct {
+	Alias []alias `xml:"variation"`
+}
+
+type alias struct {
+	Name string `xml:"name"`
 }

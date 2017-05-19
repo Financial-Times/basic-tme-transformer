@@ -41,6 +41,7 @@ func (*Transformer) UnMarshallTerm(content []byte) (interface{}, error) {
 func transformConcept(tmeTerm Term, endpoint string) BasicConcept {
 	identifier := buildTmeIdentifier(tmeTerm.RawID, EndpointTypeMappings[endpoint]["taxonomy"].(string))
 	generatedUUID := uuid.NewMD5(uuid.UUID{}, []byte(identifier)).String()
+	aliasList := buildAliasList(tmeTerm.Aliases)
 
 	return BasicConcept{
 		UUID:           generatedUUID,
@@ -48,6 +49,7 @@ func transformConcept(tmeTerm Term, endpoint string) BasicConcept {
 		Type:           EndpointTypeMappings[endpoint]["type"].(string),
 		Authority:      "TME",
 		AuthorityValue: identifier,
+		Aliases:        aliasList,
 	}
 }
 
@@ -55,6 +57,14 @@ func buildTmeIdentifier(rawID string, tmeTermTaxonomyName string) string {
 	id := base64.StdEncoding.EncodeToString([]byte(rawID))
 	taxonomyName := base64.StdEncoding.EncodeToString([]byte(tmeTermTaxonomyName))
 	return id + "-" + taxonomyName
+}
+
+func buildAliasList(aList aliases) []string {
+	aliasList := make([]string, len(aList.Alias))
+	for k, v := range aList.Alias {
+		aliasList[k] = v.Name
+	}
+	return aliasList
 }
 
 var EndpointTypeMappings = map[string]map[string]interface{}{
@@ -92,5 +102,10 @@ var EndpointTypeMappings = map[string]map[string]interface{}{
 		"taxonomy": "AlphavilleSeriesClassification",
 		"source":   &tmereader.KnowledgeBases{},
 		"type":     "AlphavilleSeries",
+	},
+	"people": {
+		"taxonomy": "PN",
+		"source":   &tmereader.AuthorityFiles{},
+		"type":     "Person",
 	},
 }

@@ -2,6 +2,7 @@ package tme
 
 type BasicConcept struct {
 	UUID           string   `json:"uuid"`
+	ParentUUID     string   `json:"parentUUID,omitempty"`
 	PrefLabel      string   `json:"prefLabel,omitempty"`
 	Type           string   `json:"type,omitempty"`
 	Authority      string   `json:"authority,omitempty"`

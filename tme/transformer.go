@@ -5,7 +5,6 @@ import (
 	"encoding/xml"
 
 	"github.com/Financial-Times/tme-reader/tmereader"
-	"github.com/golang/go/src/pkg/fmt"
 	"github.com/pborman/uuid"
 	"github.com/pkg/errors"
 )
@@ -42,7 +41,6 @@ func (*Transformer) UnMarshallTerm(content []byte) (interface{}, error) {
 }
 
 func transformConcept(tmeTerm Term, endpoint string) BasicConcept {
-	fmt.Printf("Tme term is %s\n", tmeTerm)
 	identifier := buildTmeIdentifier(tmeTerm.RawID, EndpointTypeMappings[endpoint]["taxonomy"].(string))
 	generatedUUID := uuid.NewMD5(uuid.UUID{}, []byte(identifier)).String()
 	aliasList := buildAliasList(tmeTerm.Aliases)

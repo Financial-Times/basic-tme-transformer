@@ -24,6 +24,6 @@ _testmain.go
 *.prof
 
 cache
-basic-tme-transformer
+/basic-tme-transformer
 cache.db
 vendor/*/

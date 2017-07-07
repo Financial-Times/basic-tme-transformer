@@ -138,7 +138,7 @@ func writeJSONResponse(obj interface{}, found bool, theType string, writer http.
 func (th *Handler) HealthCheck() v1a.Check {
 	return v1a.Check{
 		BusinessImpact:   "Unable to respond to requests",
-		Name:             "Check service has finished initilising.",
+		Name:             "Check service has finished initialising.",
 		PanicGuide:       "https://dewey.ft.com/basic-tme-transformer.html",
 		Severity:         1,
 		TechnicalSummary: "Cannot serve any content as data not loaded.",

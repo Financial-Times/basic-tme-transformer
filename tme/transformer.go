@@ -47,7 +47,7 @@ func transformConcept(tmeTerm Term, endpoint string) BasicConcept {
 	if (EndpointTypeMappings[endpoint]["taxonomy"].(string)) == "Brands" {
 		return BasicConcept{
 			UUID:           generatedUUID,
-			ParentUUID:     financialTimesBrandUuid,
+			ParentUUIDs:    []string{financialTimesBrandUuid},
 			PrefLabel:      tmeTerm.CanonicalName,
 			Type:           EndpointTypeMappings[endpoint]["type"].(string),
 			Authority:      "TME",

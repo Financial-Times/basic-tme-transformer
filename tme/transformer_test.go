@@ -43,7 +43,9 @@ func TestTransformer_transformConcept(t *testing.T) {
 		assert.Equal(t, scenario.expectedUuid, result.UUID, "Scenario "+scenario.testName+" failed")
 		assert.Equal(t, scenario.expectedPrefLabel, result.PrefLabel, "Scenario "+scenario.testName+" failed")
 		assert.Equal(t, scenario.expectedType, result.Type, "Scenario "+scenario.testName+" failed")
-		assert.Equal(t, scenario.expectedParentUuid, result.ParentUUID, "Scenario "+scenario.testName+" failed")
+		if scenario.expectedParentUuid != "" {
+			assert.Equal(t, scenario.expectedParentUuid, result.ParentUUIDs[0], "Scenario "+scenario.testName+" failed")
+		}
 		assert.Equal(t, scenario.expectedAliases, result.Aliases, "Scenario "+scenario.testName+" failed")
 		assert.Equal(t, scenario.expectedAuthority, result.Authority, "Scenario "+scenario.testName+" failed")
 		assert.Equal(t, scenario.expectedAuthValue, result.AuthorityValue, "Scenario "+scenario.testName+" failed")

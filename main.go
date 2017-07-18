@@ -111,7 +111,7 @@ func main() {
 		EnvVar: "WRITER_ENDPOINT",
 	})
 	writerWorkers := app.Int(cli.IntOpt{
-		Name:   "writerEndpoint",
+		Name:   "writerWorkers",
 		Value:  100,
 		Desc:   "Number of workers writing to the writer endpoint.",
 		EnvVar: "WRITER_WORKERS",

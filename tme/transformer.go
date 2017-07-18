@@ -9,6 +9,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const financialTimesBrandUuid = "dbb0bdae-1f0c-11e4-b0cb-b2227cce2b54"
+
 type Transformer struct {
 }
 
@@ -42,6 +44,17 @@ func transformConcept(tmeTerm Term, endpoint string) BasicConcept {
 	identifier := buildTmeIdentifier(tmeTerm.RawID, EndpointTypeMappings[endpoint]["taxonomy"].(string))
 	generatedUUID := uuid.NewMD5(uuid.UUID{}, []byte(identifier)).String()
 	aliasList := buildAliasList(tmeTerm.Aliases)
+	if (EndpointTypeMappings[endpoint]["taxonomy"].(string)) == "Brands" {
+		return BasicConcept{
+			UUID:           generatedUUID,
+			ParentUUIDs:    []string{financialTimesBrandUuid},
+			PrefLabel:      tmeTerm.CanonicalName,
+			Type:           EndpointTypeMappings[endpoint]["type"].(string),
+			Authority:      "TME",
+			AuthorityValue: identifier,
+			Aliases:        aliasList,
+		}
+	}
 
 	return BasicConcept{
 		UUID:           generatedUUID,
@@ -68,6 +81,16 @@ func buildAliasList(aList aliases) []string {
 }
 
 var EndpointTypeMappings = map[string]map[string]interface{}{
+	"alphaville-series": {
+		"taxonomy": "AlphavilleSeriesClassification",
+		"source":   &tmereader.KnowledgeBases{},
+		"type":     "AlphavilleSeries",
+	},
+	"brands": {
+		"taxonomy": "Brands",
+		"source":   &tmereader.AuthorityFiles{},
+		"type":     "Brand",
+	},
 	"genres": {
 		"taxonomy": "Genres",
 		"source":   &tmereader.KnowledgeBases{},
@@ -78,34 +101,29 @@ var EndpointTypeMappings = map[string]map[string]interface{}{
 		"source":   &tmereader.AuthorityFiles{},
 		"type":     "Location",
 	},
-	"special-reports": {
-		"taxonomy": "SpecialReports",
+	"people": {
+		"taxonomy": "PN",
 		"source":   &tmereader.AuthorityFiles{},
-		"type":     "SpecialReport",
-	},
-	"topics": {
-		"taxonomy": "Topics",
-		"source":   &tmereader.KnowledgeBases{},
-		"type":     "Topic",
-	},
-	"subjects": {
-		"taxonomy": "Subjects",
-		"source":   &tmereader.KnowledgeBases{},
-		"type":     "Subject",
+		"type":     "Person",
 	},
 	"sections": {
 		"taxonomy": "Sections",
 		"source":   &tmereader.KnowledgeBases{},
 		"type":     "Section",
 	},
-	"alphaville-series": {
-		"taxonomy": "AlphavilleSeriesClassification",
-		"source":   &tmereader.KnowledgeBases{},
-		"type":     "AlphavilleSeries",
-	},
-	"people": {
-		"taxonomy": "PN",
+	"special-reports": {
+		"taxonomy": "SpecialReports",
 		"source":   &tmereader.AuthorityFiles{},
-		"type":     "Person",
+		"type":     "SpecialReport",
+	},
+	"subjects": {
+		"taxonomy": "Subjects",
+		"source":   &tmereader.KnowledgeBases{},
+		"type":     "Subject",
+	},
+	"topics": {
+		"taxonomy": "Topics",
+		"source":   &tmereader.KnowledgeBases{},
+		"type":     "Topic",
 	},
 }

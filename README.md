@@ -6,7 +6,7 @@
 
 ## Introduction
 The Basic TME Transformer generates UPP representations of TME concepts for a set of taxonomies:
-Genres, Locations, Special Reports, Topics, Subjects, Sections and Alphaville Series.
+Alphaville Series, Brands, Genres, Locations, People, Sections, Special Reports, Subjects, Topics .
 
 ## Installation
 

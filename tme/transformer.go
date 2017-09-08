@@ -44,19 +44,8 @@ func transformConcept(tmeTerm Term, endpoint string) BasicConcept {
 	identifier := buildTmeIdentifier(tmeTerm.RawID, EndpointTypeMappings[endpoint]["taxonomy"].(string))
 	generatedUUID := uuid.NewMD5(uuid.UUID{}, []byte(identifier)).String()
 	aliasList := buildAliasList(tmeTerm.Aliases)
-	if (EndpointTypeMappings[endpoint]["taxonomy"].(string)) == "Brands" {
-		return BasicConcept{
-			UUID:           generatedUUID,
-			ParentUUIDs:    []string{financialTimesBrandUuid},
-			PrefLabel:      tmeTerm.CanonicalName,
-			Type:           EndpointTypeMappings[endpoint]["type"].(string),
-			Authority:      "TME",
-			AuthorityValue: identifier,
-			Aliases:        aliasList,
-		}
-	}
 
-	return BasicConcept{
+	basicConcept := BasicConcept{
 		UUID:           generatedUUID,
 		PrefLabel:      tmeTerm.CanonicalName,
 		Type:           EndpointTypeMappings[endpoint]["type"].(string),
@@ -64,6 +53,12 @@ func transformConcept(tmeTerm Term, endpoint string) BasicConcept {
 		AuthorityValue: identifier,
 		Aliases:        aliasList,
 	}
+	if (EndpointTypeMappings[endpoint]["taxonomy"].(string)) == "Brands" {
+		basicConcept.ParentUUIDs = []string{financialTimesBrandUuid}
+	} else if (EndpointTypeMappings[endpoint]["taxonomy"].(string)) == "Authors" {
+		basicConcept.IsAuthor = true
+	}
+	return basicConcept
 }
 
 func buildTmeIdentifier(rawID string, tmeTermTaxonomyName string) string {
@@ -85,6 +80,11 @@ var EndpointTypeMappings = map[string]map[string]interface{}{
 		"taxonomy": "AlphavilleSeriesClassification",
 		"source":   &tmereader.KnowledgeBases{},
 		"type":     "AlphavilleSeries",
+	},
+	"author": {
+		"taxonomy": "Authors",
+		"source":   &tmereader.AuthorityFiles{},
+		"type":     "Author",
 	},
 	"brands": {
 		"taxonomy": "Brands",

@@ -84,7 +84,7 @@ var EndpointTypeMappings = map[string]map[string]interface{}{
 	"authors": {
 		"taxonomy": "Authors",
 		"source":   &tmereader.AuthorityFiles{},
-		"type":     "Author",
+		"type":     "Person",
 	},
 	"brands": {
 		"taxonomy": "Brands",

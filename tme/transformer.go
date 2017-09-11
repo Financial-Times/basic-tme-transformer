@@ -81,7 +81,7 @@ var EndpointTypeMappings = map[string]map[string]interface{}{
 		"source":   &tmereader.KnowledgeBases{},
 		"type":     "AlphavilleSeries",
 	},
-	"author": {
+	"authors": {
 		"taxonomy": "Authors",
 		"source":   &tmereader.AuthorityFiles{},
 		"type":     "Author",

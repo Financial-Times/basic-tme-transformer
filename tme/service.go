@@ -13,8 +13,8 @@ import (
 
 	"github.com/Financial-Times/tme-reader/tmereader"
 	"github.com/Financial-Times/transactionid-utils-go"
-	log "github.com/sirupsen/logrus"
 	"github.com/boltdb/bolt"
+	log "github.com/sirupsen/logrus"
 )
 
 type httpClient interface {

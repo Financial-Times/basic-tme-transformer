@@ -15,11 +15,11 @@ import (
 	"github.com/Financial-Times/service-status-go/gtg"
 	status "github.com/Financial-Times/service-status-go/httphandlers"
 	"github.com/Financial-Times/tme-reader/tmereader"
-	log "github.com/Sirupsen/logrus"
 	"github.com/jawher/mow.cli"
 	_ "github.com/joho/godotenv/autoload"
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/sethgrid/pester"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -61,7 +61,6 @@ func main() {
 		Desc:   "Number of requests to be executed in parallel to TME",
 		EnvVar: "BATCH_SIZE",
 	})
-
 	baseURL := app.String(cli.StringOpt{
 		Name:   "base-url",
 		Value:  "http://localhost:8080/transformers/",
@@ -104,7 +103,6 @@ func main() {
 		Desc:   "Log level",
 		EnvVar: "LOG_LEVEL",
 	})
-
 	writerEndpoint := app.String(cli.StringOpt{
 		Name:   "writerEndpoint",
 		Desc:   "Endpoint for the concept RW app.",

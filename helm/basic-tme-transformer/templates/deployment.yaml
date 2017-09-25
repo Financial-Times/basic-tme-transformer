@@ -1,0 +1,83 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ .Values.service.name }} 
+  labels:
+    chart: "{{ .Chart.Name | trunc 63 }}"
+    chartVersion: "{{ .Chart.Version | trunc 63 }}" 
+    visualize: "true" 
+    app: {{ .Values.service.name }} 
+spec:
+  replicas: {{ .Values.replicaCount }} 
+  selector: 
+    matchLabels:
+      app: {{ .Values.service.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.service.name }}
+        visualize: "true" 
+    spec:
+      containers: 
+      - name: {{ .Values.service.name }} 
+        image: "{{ .Values.image.repository }}:{{ .Chart.Version }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: BASE_URL
+          value: {{ .Values.env.BASE_URL }}
+        - name: TME_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: global-config
+              key: tme.url
+        - name: TME_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: global-secrets
+              key: tme.username
+        - name: TME_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: global-secrets
+              key: tme.password
+        - name: TME_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: global-secrets
+              key: tme.token
+        - name: CACHE_FILE_NAME
+          value: {{ .Values.env.CACHE_FILE_NAME }}
+        - name: GRAPHITE_ADDRESS
+          valueFrom:
+            configMapKeyRef:
+              name: global-config
+              key: graphite.address
+        - name: GRAPHITE_PREFIX
+          value: 'coco.services.{{required "The target_env value is required for this app. Use helm upgrade ... --set target_env=... when installing." .Values.target_env}}.{{ .Values.service.name }}'
+        - name: LOG_METRICS
+          value: "{{ .Values.env.LOG_METRICS }}"
+        - name: WRITER_ENDPOINT
+          value: {{ .Values.env.WRITER_ENDPOINT }}
+        - name: WRITER_WORKERS
+          value: "{{ .Values.env.WRITER_WORKERS }}"
+        volumeMounts:
+        - name: basic-tme-transformer-cache
+          mountPath: /cache
+        ports:
+        - containerPort: 8080
+        livenessProbe:
+          initialDelaySeconds: 5
+          tcpSocket:
+            port: 8080
+        readinessProbe:
+          httpGet:
+            path: /__gtg
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        resources: 
+{{ toYaml .Values.resources | indent 12 }}
+      volumes:
+      - name: basic-tme-transformer-cache
+        persistentVolumeClaim:
+          claimName: transformers-cache-pvc

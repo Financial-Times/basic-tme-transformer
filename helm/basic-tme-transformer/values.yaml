@@ -1,0 +1,19 @@
+# Default values for basic-tme-transformer.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+service:
+  name: "basic-tme-transformer" # The name of the service, should be defined in the specific app-configs folder.
+  hasHealthcheck: "true"
+replicaCount: 1
+image:
+  repository: coco/basic-tme-transformer
+  pullPolicy: IfNotPresent
+resources:
+  limits:
+    memory: 1Gi
+env:
+  BASE_URL: ""
+  CACHE_FILE_NAME: ""
+  LOG_METRICS: ""
+  WRITER_ENDPOINT: ""
+  WRITER_WORKERS: ""

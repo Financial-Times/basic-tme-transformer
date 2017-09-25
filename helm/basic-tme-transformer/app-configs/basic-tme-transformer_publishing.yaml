@@ -1,0 +1,10 @@
+# Values used for the deployed application.
+replicaCount: 1
+service:
+  name: "basic-tme-transformer"
+env:
+  BASE_URL: "http://basic-tme-transformer:8080/transformers"
+  CACHE_FILE_NAME: "/cache/basic-tme-transformer.db"
+  LOG_METRICS: "false"
+  WRITER_ENDPOINT: "http://concepts-rw-s3:8080/concepts"
+  WRITER_WORKERS: "10"

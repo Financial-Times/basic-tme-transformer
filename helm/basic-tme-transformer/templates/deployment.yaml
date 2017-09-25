@@ -23,8 +23,8 @@ spec:
         image: "{{ .Values.image.repository }}:{{ .Chart.Version }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         env:
-        - name: TME_BASE
-          value: "http://basic-tme-transformer:8080/transformers"
+        - name: BASE_URL
+          value: {{ .Values.env.BASE_URL }}
         - name: TME_BASE_URL
           valueFrom:
             configMapKeyRef:
@@ -46,18 +46,20 @@ spec:
               name: global-secrets
               key: tme.token
         - name: CACHE_FILE_NAME
-          value: "/cache/basic-tme-transformer.db"
+          value: {{ .Values.env.CACHE_FILE_NAME }}
         - name: GRAPHITE_ADDRESS
           valueFrom:
             configMapKeyRef:
               name: global-config
               key: graphite.address
         - name: GRAPHITE_PREFIX
-          value: coco.services.k8s.basic-tme-transformer
+          value: 'coco.services.{{required "The target_env value is required for this app. Use helm upgrade ... --set target_env=... when installing." .Values.target_env}}.{{ .Values.service.name }}'
         - name: LOG_METRICS
-          value: "false"
+          value: {{ .Values.env.LOG_METRICS }}
         - name: WRITER_ENDPOINT
-          value: "http://concepts-rw-s3:8080/concepts"
+          value: {{ .Values.env.WRITER_ENDPOINT }}
+        - name: WRITER_WORKERS
+          value: {{ .Values.env.WRITER_WORKERS }}
         volumeMounts:
         - name: basic-tme-transformer-cache
           mountPath: /cache

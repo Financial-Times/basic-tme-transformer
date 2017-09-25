@@ -11,5 +11,9 @@ image:
 resources:
   limits:
     memory: 1Gi
-
-
+env:
+  BASE_URL: ""
+  CACHE_FILE_NAME: ""
+  LOG_METRICS: ""
+  WRITER_ENDPOINT: ""
+  WRITER_WORKERS: ""

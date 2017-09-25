@@ -27,3 +27,4 @@ cache
 /basic-tme-transformer
 cache.db
 vendor/*/
+.idea/*

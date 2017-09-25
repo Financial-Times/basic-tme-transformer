@@ -2,11 +2,13 @@ package tme
 
 type BasicConcept struct {
 	UUID           string   `json:"uuid"`
+	ParentUUIDs    []string `json:"parentUUIDs,omitempty"`
 	PrefLabel      string   `json:"prefLabel,omitempty"`
 	Type           string   `json:"type,omitempty"`
 	Authority      string   `json:"authority,omitempty"`
 	AuthorityValue string   `json:"authorityValue,omitempty"`
 	Aliases        []string `json:"aliases,omitempty"`
+	IsAuthor       bool     `json:"isAuthor,omitempty"`
 }
 
 type ConceptUUID struct {

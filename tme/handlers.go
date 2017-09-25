@@ -12,10 +12,10 @@ import (
 	"github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/Financial-Times/service-status-go/gtg"
 	"github.com/Financial-Times/transactionid-utils-go"
-	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 type Handler struct {
@@ -138,7 +138,7 @@ func writeJSONResponse(obj interface{}, found bool, theType string, writer http.
 func (th *Handler) HealthCheck() v1a.Check {
 	return v1a.Check{
 		BusinessImpact:   "Unable to respond to requests",
-		Name:             "Check service has finished initilising.",
+		Name:             "Check service has finished initialising.",
 		PanicGuide:       "https://dewey.ft.com/basic-tme-transformer.html",
 		Severity:         1,
 		TechnicalSummary: "Cannot serve any content as data not loaded.",

@@ -55,11 +55,11 @@ spec:
         - name: GRAPHITE_PREFIX
           value: 'coco.services.{{required "The target_env value is required for this app. Use helm upgrade ... --set target_env=... when installing." .Values.target_env}}.{{ .Values.service.name }}'
         - name: LOG_METRICS
-          value: {{ .Values.env.LOG_METRICS }}
+          value: "{{ .Values.env.LOG_METRICS }}"
         - name: WRITER_ENDPOINT
           value: {{ .Values.env.WRITER_ENDPOINT }}
         - name: WRITER_WORKERS
-          value: {{ .Values.env.WRITER_WORKERS }}
+          value: "{{ .Values.env.WRITER_WORKERS }}"
         volumeMounts:
         - name: basic-tme-transformer-cache
           mountPath: /cache

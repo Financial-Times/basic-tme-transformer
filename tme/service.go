@@ -13,7 +13,7 @@ import (
 
 	"github.com/Financial-Times/tme-reader/tmereader"
 	"github.com/Financial-Times/transactionid-utils-go"
-	log "github.com/sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"github.com/boltdb/bolt"
 )
 

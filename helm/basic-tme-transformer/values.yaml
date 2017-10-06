@@ -11,9 +11,13 @@ image:
 resources:
   limits:
     memory: 1Gi
+cache:
+  size: 5Gi
+  nfsServer: ""
+  path: "/"
 env:
-  BASE_URL: ""
-  CACHE_FILE_NAME: ""
-  LOG_METRICS: ""
-  WRITER_ENDPOINT: ""
-  WRITER_WORKERS: ""
+  BASE_URL: "http://basic-tme-transformer:8080/transformers"
+  CACHE_FILE_NAME: "/cache/basic-tme-transformer.db"
+  LOG_METRICS: "false"
+  WRITER_ENDPOINT: "http://concepts-rw-s3:8080/concepts"
+  WRITER_WORKERS: "10"

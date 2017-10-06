@@ -4,4 +4,4 @@ service:
   name: "basic-tme-transformer"
 
 cache:
-  nfsServer: fs-6330fcaa.efs.eu-west-1.amazonaws.com
+  nfsServer: fs-a468c96d.efs.eu-west-1.amazonaws.com

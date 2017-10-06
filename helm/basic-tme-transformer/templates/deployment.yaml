@@ -61,7 +61,7 @@ spec:
         - name: WRITER_WORKERS
           value: "{{ .Values.env.WRITER_WORKERS }}"
         volumeMounts:
-        - name: basic-tme-transformer-cache
+        - name: "{{ .Values.service.name }}-cache"
           mountPath: /cache
         ports:
         - containerPort: 8080
@@ -78,6 +78,6 @@ spec:
         resources: 
 {{ toYaml .Values.resources | indent 12 }}
       volumes:
-      - name: basic-tme-transformer-cache
+      - name: "{{ .Values.service.name }}-cache"
         persistentVolumeClaim:
-          claimName: transformers-cache-pvc
+          claimName: "{{ .Values.service.name }}-cache-pvc"

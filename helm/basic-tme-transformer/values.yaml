@@ -13,7 +13,6 @@ resources:
     memory: 1Gi
 cache:
   size: 5Gi
-  nfsServer: ""
   path: "/"
 env:
   BASE_URL: "http://basic-tme-transformer:8080/transformers"

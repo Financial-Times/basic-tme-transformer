@@ -1,7 +1,0 @@
-# Values used for the deployed application.
-replicaCount: 1
-service:
-  name: "basic-tme-transformer"
-
-cache:
-  nfsServer: fs-a468c96d.efs.eu-west-1.amazonaws.com

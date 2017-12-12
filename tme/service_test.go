@@ -253,6 +253,15 @@ func TestServiceImpl_SendConcepts_ServiceError(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestServiceImpl_SendConcepts_NoErrorWhenNotModified(t *testing.T) {
+	svc := createTestService(t, 304, nil)
+	time.Sleep(RepoSleepDuration)
+
+	err := svc.SendConcepts("topics", "job123")
+	// We're expecting that there's no error when the concept-rw-s3 returns StatusNotModified when hashing is enabled.
+	assert.NoError(t, err)
+}
+
 func createTestService(t *testing.T, statusCode int, clientError error) Service {
 	tmpfile := getTempFile(t)
 	repo := &mockTmeRepo{terms: []Term{{CanonicalName: "Bob", RawID: "bob"}, {CanonicalName: "Fred", RawID: "fred"}}}

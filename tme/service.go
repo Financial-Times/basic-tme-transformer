@@ -398,6 +398,12 @@ func (s *ServiceImpl) sendSingleConcept(endpoint, uuid, payload, transactionID s
 
 	resp, err := s.httpClient.Do(req)
 	defer resp.Body.Close()
+
+	if resp.StatusCode == 304 {
+		log.WithFields(log.Fields{"transaction_id": transactionID, "UUID": uuid}).Info("Concept has not been updated since last update, skipping")
+		return nil
+	}
+
 	if int(resp.StatusCode/100) != 2 {
 		return fmt.Errorf("Bad response from writer [%d]: %s", resp.StatusCode, fullURL)
 	}

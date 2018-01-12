@@ -10,7 +10,7 @@ import (
 
 	"github.com/Financial-Times/base-ft-rw-app-go/baseftrwapp"
 	"github.com/Financial-Times/basic-tme-transformer/tme"
-	"github.com/Financial-Times/go-fthealth/v1a"
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"github.com/Financial-Times/http-handlers-go/httphandlers"
 	"github.com/Financial-Times/service-status-go/gtg"
 	status "github.com/Financial-Times/service-status-go/httphandlers"
@@ -203,7 +203,19 @@ func buildRoutes(th *tme.Handler) {
 
 	http.HandleFunc(status.BuildInfoPath, status.BuildInfoHandler)
 
-	http.HandleFunc("/__health", v1a.Handler("Basic TME Transformer Healthchecks", "Checks for the health of the service", th.HealthCheck()))
+	var checks = []fthealth.Check{th.HealthCheck()}
+
+	timedHC := fthealth.TimedHealthCheck{
+		HealthCheck: fthealth.HealthCheck{
+			SystemCode:  "basic-tme-transformer",
+			Description: "Transforms concepts in TME to UPP representation",
+			Name:        "basic-tme-transformer",
+			Checks:      checks,
+		},
+		Timeout: 10 * time.Second,
+	}
+
+	http.HandleFunc("/__health", fthealth.Handler(&timedHC))
 	http.HandleFunc(status.GTGPath, status.NewGoodToGoHandler(gtg.StatusChecker(th.G2GCheck)))
 	http.Handle("/", monitoringRouter)
 }

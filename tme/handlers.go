@@ -9,7 +9,7 @@ import (
 
 	"strings"
 
-	"github.com/Financial-Times/go-fthealth/v1a"
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"github.com/Financial-Times/service-status-go/gtg"
 	"github.com/Financial-Times/transactionid-utils-go"
 	"github.com/gorilla/handlers"
@@ -135,8 +135,8 @@ func writeJSONResponse(obj interface{}, found bool, theType string, writer http.
 	}
 }
 
-func (th *Handler) HealthCheck() v1a.Check {
-	return v1a.Check{
+func (th *Handler) HealthCheck() fthealth.Check {
+	return fthealth.Check{
 		BusinessImpact:   "Unable to respond to requests",
 		Name:             "Check service has finished initialising.",
 		PanicGuide:       "https://dewey.ft.com/basic-tme-transformer.html",

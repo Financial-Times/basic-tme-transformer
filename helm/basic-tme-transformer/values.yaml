@@ -9,7 +9,7 @@ image:
   repository: coco/basic-tme-transformer
   pullPolicy: IfNotPresent
 resources:
-  request:
+  requests:
     memory: 800Mi
   limits:
     memory: 1Gi

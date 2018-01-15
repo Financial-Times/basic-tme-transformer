@@ -9,11 +9,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/Financial-Times/service-status-go/gtg"
 	status "github.com/Financial-Times/service-status-go/httphandlers"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	"time"
 )
 
 type MockService struct {
@@ -368,7 +369,20 @@ func TestHandler_Healthcheck_Good(t *testing.T) {
 	handler := NewHandler(mockService)
 
 	router := mux.NewRouter()
-	router.HandleFunc("/__health", v1a.Handler("Basic TME Transformer Healthchecks", "Checks for the health of the service", handler.HealthCheck()))
+
+	var checks = []fthealth.Check{handler.HealthCheck()}
+
+	timedHC := fthealth.TimedHealthCheck{
+		HealthCheck: fthealth.HealthCheck{
+			SystemCode:  "basic-tme-transformer",
+			Description: "Transforms concepts in TME to UPP representation",
+			Name:        "basic-tme-transformer",
+			Checks:      checks,
+		},
+		Timeout: 10 * time.Second,
+	}
+
+	router.HandleFunc("/__health", fthealth.Handler(&timedHC))
 
 	req, _ := http.NewRequest("GET", "/__health", nil)
 	rr := httptest.NewRecorder()
@@ -385,7 +399,7 @@ func TestHandler_Healthcheck_Good(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 200, rr.Code)
-	assert.Equal(t, "Basic TME Transformer Healthchecks", output.Name)
+	assert.Equal(t, "basic-tme-transformer", output.Name)
 	assert.Equal(t, true, output.OK)
 }
 
@@ -402,7 +416,19 @@ func TestHandler_Healthcheck_Bad(t *testing.T) {
 	handler := NewHandler(mockService)
 
 	router := mux.NewRouter()
-	router.HandleFunc("/__health", v1a.Handler("Basic TME Transformer Healthchecks", "Checks for the health of the service", handler.HealthCheck()))
+	var checks = []fthealth.Check{handler.HealthCheck()}
+
+	timedHC := fthealth.TimedHealthCheck{
+		HealthCheck: fthealth.HealthCheck{
+			SystemCode:  "basic-tme-transformer",
+			Description: "Transforms concepts in TME to UPP representation",
+			Name:        "basic-tme-transformer",
+			Checks:      checks,
+		},
+		Timeout: 10 * time.Second,
+	}
+
+	router.HandleFunc("/__health", fthealth.Handler(&timedHC))
 
 	req, _ := http.NewRequest("GET", "/__health", nil)
 	rr := httptest.NewRecorder()
@@ -419,6 +445,6 @@ func TestHandler_Healthcheck_Bad(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 200, rr.Code)
-	assert.Equal(t, "Basic TME Transformer Healthchecks", output.Name)
+	assert.Equal(t, "basic-tme-transformer", output.Name)
 	assert.Equal(t, false, output.OK)
 }

@@ -126,4 +126,9 @@ var EndpointTypeMappings = map[string]map[string]interface{}{
 		"source":   &tmereader.KnowledgeBases{},
 		"type":     "Topic",
 	},
+	"organisations": {
+		"taxonomy": "ON",
+		"source":   &tmereader.AuthorityFiles{},
+		"type":     "Organisation",
+	},
 }

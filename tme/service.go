@@ -22,13 +22,14 @@ type httpClient interface {
 }
 
 type Service interface {
-	IsDataLoaded() bool
+	IsDataLoaded(endpoint string) bool
 	GetCount(endpoint string) (int, error)
 	GetAllConcepts(endpoint string) (io.PipeReader, error)
 	GetConceptByUUID(endpoint, uuid string) (BasicConcept, bool, error)
 	GetConceptUUIDs(endpoint string) (io.PipeReader, error)
 	SendConcepts(endpoint, jobID string) error
 	Reload(endpoint string) error
+	GetLoadedTypes() []string
 }
 
 type ServiceImpl struct {
@@ -38,7 +39,7 @@ type ServiceImpl struct {
 	httpClient     httpClient
 	baseURL        string
 	db             *bolt.DB
-	dataLoaded     bool
+	dataLoaded     map[string]bool
 	maxTmeRecords  int
 	writerEndpoint string
 	writerWorkers  int
@@ -53,6 +54,7 @@ func NewService(repos map[string]tmereader.Repository, cacheFilename string, htt
 		maxTmeRecords:  maxTmeRecords,
 		writerEndpoint: writerEndpoint,
 		writerWorkers:  writerWorkers,
+		dataLoaded: map[string]bool{},
 	}
 	go func(service *ServiceImpl) {
 		err := service.loadDB()
@@ -63,15 +65,23 @@ func NewService(repos map[string]tmereader.Repository, cacheFilename string, htt
 	return svc
 }
 
-func (s *ServiceImpl) IsDataLoaded() bool {
-	s.RLock()
-	defer s.RUnlock()
-	return s.dataLoaded
+func (s *ServiceImpl) GetLoadedTypes() []string{
+	var types []string
+	for k := range s.repos{
+		types = append(types, k)
+	}
+	return types
 }
 
-func (s *ServiceImpl) setDataLoaded(val bool) {
+func (s *ServiceImpl) IsDataLoaded(endpoint string) bool {
+	s.RLock()
+	defer s.RUnlock()
+	return s.dataLoaded[endpoint]
+}
+
+func (s *ServiceImpl) setDataLoaded(endpoint string, val bool) {
 	s.Lock()
-	s.dataLoaded = val
+	s.dataLoaded[endpoint] = val
 	s.Unlock()
 }
 
@@ -91,7 +101,7 @@ func (s *ServiceImpl) openDB() error {
 
 func (s *ServiceImpl) Reload(endpoint string) error {
 	log.Infof("Reloading %s", endpoint)
-	s.setDataLoaded(false)
+	s.setDataLoaded(endpoint,false)
 	if err := s.openDB(); err != nil {
 		return err
 	}
@@ -104,13 +114,12 @@ func (s *ServiceImpl) Reload(endpoint string) error {
 	if err != nil {
 		return err
 	}
-	s.setDataLoaded(true)
+	s.setDataLoaded(endpoint,true)
 	log.Infof("Completed %s load", endpoint)
 	return nil
 }
 
 func (s *ServiceImpl) loadDB() error {
-	s.setDataLoaded(false)
 	log.Info("Loading DB...")
 
 	if err := s.openDB(); err != nil {
@@ -119,16 +128,16 @@ func (s *ServiceImpl) loadDB() error {
 
 	var wg sync.WaitGroup
 	wg.Add(len(s.repos))
-	for k := range s.repos {
-		go s.loadConcept(k, s.repos[k], &wg)
+	for k, v := range s.repos {
+		go s.loadConcept(k, v, &wg)
 	}
 	wg.Wait()
-	s.setDataLoaded(true)
 	log.Info("Completed DB load.")
 	return nil
 }
 
 func (s *ServiceImpl) loadConcept(endpoint string, repo tmereader.Repository, wg *sync.WaitGroup) error {
+	s.setDataLoaded(endpoint, false)
 	log.Infof("Loading %s", endpoint)
 	err := s.createCacheBucket(endpoint)
 	if err != nil {
@@ -174,6 +183,7 @@ func (s *ServiceImpl) loadConcept(endpoint string, repo tmereader.Repository, wg
 		log.Errorf("Error storing to cache: %+v.", err)
 	}
 	log.Infof("Finished processing %s", endpoint)
+	s.setDataLoaded(endpoint, true)
 	if wg != nil {
 		wg.Done()
 	}
@@ -197,7 +207,7 @@ func (s *ServiceImpl) createCacheBucket(taxonomy string) error {
 func (s *ServiceImpl) GetCount(endpoint string) (int, error) {
 	s.RLock()
 	defer s.RUnlock()
-	if !s.IsDataLoaded() {
+	if !s.IsDataLoaded(endpoint) {
 		return 0, errors.New("Data not loaded")
 	}
 

@@ -135,25 +135,31 @@ func writeJSONResponse(obj interface{}, found bool, theType string, writer http.
 	}
 }
 
-func (th *Handler) HealthCheck() fthealth.Check {
-	return fthealth.Check{
-		BusinessImpact:   "Unable to respond to requests",
-		Name:             "Check service has finished initialising.",
-		PanicGuide:       "https://dewey.ft.com/basic-tme-transformer.html",
-		Severity:         1,
-		TechnicalSummary: "Cannot serve any content as data not loaded.",
-		Checker: func() (string, error) {
-			if !th.service.IsDataLoaded() {
-				return "Data is not loaded", errors.New("Data is not loaded")
-			}
-			return "Service is up and running", nil
-		},
+func (th *Handler) HealthCheck() []fthealth.Check {
+	var checks []fthealth.Check
+	for _, v := range th.service.GetLoadedTypes() {
+		checks = append(checks, fthealth.Check{
+			BusinessImpact:   "Unable to respond to requests",
+			Name:             fmt.Sprintf("%s type has data loaded", EndpointTypeMappings[v]["type"]),
+			PanicGuide:       "https://dewey.ft.com/basic-tme-transformer.html",
+			Severity:         3,
+			TechnicalSummary: "Cannot publish concepts as data not loaded.",
+			Checker: func() (string, error) {
+				if !th.service.IsDataLoaded(v) {
+					return "Data is not loaded", errors.New("Data is not loaded")
+				}
+				return "Service is up and running", nil
+			},
+		})
 	}
+	return checks
 }
 
 func (th *Handler) G2GCheck() gtg.Status {
-	if th.service.IsDataLoaded() {
-		return gtg.Status{GoodToGo: true}
+	for _,v := range th.service.GetLoadedTypes() {
+		if th.service.IsDataLoaded(v){
+			return gtg.Status{GoodToGo: true}
+		}
 	}
 	return gtg.Status{GoodToGo: false}
 }

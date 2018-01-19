@@ -172,7 +172,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-var spareWorkers int = 10
+var spareWorkers = 10
 
 func getResilientClient(writerWorkers int) *pester.Client {
 	c := &http.Client{

@@ -21,16 +21,19 @@ type httpClient interface {
 	Do(req *http.Request) (resp *http.Response, err error)
 }
 
+// Service - the main service interface
 type Service interface {
-	IsDataLoaded() bool
+	IsDataLoaded(endpoint string) bool
 	GetCount(endpoint string) (int, error)
 	GetAllConcepts(endpoint string) (io.PipeReader, error)
 	GetConceptByUUID(endpoint, uuid string) (BasicConcept, bool, error)
 	GetConceptUUIDs(endpoint string) (io.PipeReader, error)
 	SendConcepts(endpoint, jobID string) error
 	Reload(endpoint string) error
+	GetLoadedTypes() []string
 }
 
+// ServiceImpl - implements the interface above
 type ServiceImpl struct {
 	sync.RWMutex
 	repos          map[string]tmereader.Repository
@@ -38,12 +41,13 @@ type ServiceImpl struct {
 	httpClient     httpClient
 	baseURL        string
 	db             *bolt.DB
-	dataLoaded     bool
+	dataLoaded     map[string]bool
 	maxTmeRecords  int
 	writerEndpoint string
 	writerWorkers  int
 }
 
+// NewService - creates an instance of Service
 func NewService(repos map[string]tmereader.Repository, cacheFilename string, httpClient httpClient, baseURL string, maxTmeRecords int, writerEndpoint string, writerWorkers int) Service {
 	svc := &ServiceImpl{
 		repos:          repos,
@@ -53,6 +57,7 @@ func NewService(repos map[string]tmereader.Repository, cacheFilename string, htt
 		maxTmeRecords:  maxTmeRecords,
 		writerEndpoint: writerEndpoint,
 		writerWorkers:  writerWorkers,
+		dataLoaded: map[string]bool{},
 	}
 	go func(service *ServiceImpl) {
 		err := service.loadDB()
@@ -63,15 +68,25 @@ func NewService(repos map[string]tmereader.Repository, cacheFilename string, htt
 	return svc
 }
 
-func (s *ServiceImpl) IsDataLoaded() bool {
-	s.RLock()
-	defer s.RUnlock()
-	return s.dataLoaded
+// GetLoadedTypes - returns a list of the loaded types, rather than assuming everything in the mapping.
+func (s *ServiceImpl) GetLoadedTypes() []string{
+	var types []string
+	for k := range s.repos{
+		types = append(types, k)
+	}
+	return types
 }
 
-func (s *ServiceImpl) setDataLoaded(val bool) {
+// IsDataLoaded - is data for a specific endpoint loaded?
+func (s *ServiceImpl) IsDataLoaded(endpoint string) bool {
+	s.RLock()
+	defer s.RUnlock()
+	return s.dataLoaded[endpoint]
+}
+
+func (s *ServiceImpl) setDataLoaded(endpoint string, val bool) {
 	s.Lock()
-	s.dataLoaded = val
+	s.dataLoaded[endpoint] = val
 	s.Unlock()
 }
 
@@ -89,28 +104,28 @@ func (s *ServiceImpl) openDB() error {
 	return nil
 }
 
+// Reload - Reloads the data for a specific endpoint
 func (s *ServiceImpl) Reload(endpoint string) error {
 	log.Infof("Reloading %s", endpoint)
-	s.setDataLoaded(false)
+	s.setDataLoaded(endpoint,false)
 	if err := s.openDB(); err != nil {
 		return err
 	}
 	r, ok := s.repos[endpoint]
 	if !ok {
-		return errors.New("Endpoint invalid")
+		return errors.New("endpoint invalid")
 	}
 
 	err := s.loadConcept(endpoint, r, nil)
 	if err != nil {
 		return err
 	}
-	s.setDataLoaded(true)
+	s.setDataLoaded(endpoint,true)
 	log.Infof("Completed %s load", endpoint)
 	return nil
 }
 
 func (s *ServiceImpl) loadDB() error {
-	s.setDataLoaded(false)
 	log.Info("Loading DB...")
 
 	if err := s.openDB(); err != nil {
@@ -119,16 +134,16 @@ func (s *ServiceImpl) loadDB() error {
 
 	var wg sync.WaitGroup
 	wg.Add(len(s.repos))
-	for k := range s.repos {
-		go s.loadConcept(k, s.repos[k], &wg)
+	for k, v := range s.repos {
+		go s.loadConcept(k, v, &wg)
 	}
 	wg.Wait()
-	s.setDataLoaded(true)
 	log.Info("Completed DB load.")
 	return nil
 }
 
 func (s *ServiceImpl) loadConcept(endpoint string, repo tmereader.Repository, wg *sync.WaitGroup) error {
+	s.setDataLoaded(endpoint, false)
 	log.Infof("Loading %s", endpoint)
 	err := s.createCacheBucket(endpoint)
 	if err != nil {
@@ -156,7 +171,7 @@ func (s *ServiceImpl) loadConcept(endpoint string, repo tmereader.Repository, wg
 	if err := s.db.Batch(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(endpoint))
 		if bucket == nil {
-			return fmt.Errorf("Cache bucket [%v] not found!", endpoint)
+			return fmt.Errorf("cache bucket [%v] not found", endpoint)
 		}
 		for _, t := range fullTerms {
 			concept := transformConcept(t.(Term), endpoint)
@@ -174,6 +189,7 @@ func (s *ServiceImpl) loadConcept(endpoint string, repo tmereader.Repository, wg
 		log.Errorf("Error storing to cache: %+v.", err)
 	}
 	log.Infof("Finished processing %s", endpoint)
+	s.setDataLoaded(endpoint, true)
 	if wg != nil {
 		wg.Done()
 	}
@@ -194,18 +210,19 @@ func (s *ServiceImpl) createCacheBucket(taxonomy string) error {
 	})
 }
 
+// GetCount - returns record count for a specific endpoint
 func (s *ServiceImpl) GetCount(endpoint string) (int, error) {
 	s.RLock()
 	defer s.RUnlock()
-	if !s.IsDataLoaded() {
-		return 0, errors.New("Data not loaded")
+	if !s.IsDataLoaded(endpoint) {
+		return 0, errors.New("data not loaded")
 	}
 
 	var count int
 	err := s.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(endpoint))
 		if bucket == nil {
-			return fmt.Errorf("Bucket %v not found!", endpoint)
+			return fmt.Errorf("bucket %v not found", endpoint)
 		}
 		count = bucket.Stats().KeyN
 		return nil
@@ -213,6 +230,7 @@ func (s *ServiceImpl) GetCount(endpoint string) (int, error) {
 	return count, err
 }
 
+// GetAllConcepts - returns a stream of all concepts for an endpoint
 func (s *ServiceImpl) GetAllConcepts(endpoint string) (io.PipeReader, error) {
 	s.RLock()
 	pv, pw := io.Pipe()
@@ -223,7 +241,7 @@ func (s *ServiceImpl) GetAllConcepts(endpoint string) (io.PipeReader, error) {
 		s.db.View(func(tx *bolt.Tx) error {
 			b := tx.Bucket([]byte(endpoint))
 			if b == nil {
-				return fmt.Errorf("Bucket %v not found!", endpoint)
+				return fmt.Errorf("bucket %v not found", endpoint)
 			}
 			c := b.Cursor()
 			for k, v := c.First(); k != nil; k, v = c.Next() {
@@ -238,6 +256,7 @@ func (s *ServiceImpl) GetAllConcepts(endpoint string) (io.PipeReader, error) {
 	return *pv, nil
 }
 
+// GetConceptByUUID - return a specific concept from a specific endpoint.
 func (s *ServiceImpl) GetConceptByUUID(endpoint, uuid string) (BasicConcept, bool, error) {
 	s.RLock()
 	defer s.RUnlock()
@@ -245,7 +264,7 @@ func (s *ServiceImpl) GetConceptByUUID(endpoint, uuid string) (BasicConcept, boo
 	err := s.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(endpoint))
 		if bucket == nil {
-			return fmt.Errorf("Bucket %v not found!", endpoint)
+			return fmt.Errorf("bucket %v not found", endpoint)
 		}
 		cachedValue = bucket.Get([]byte(uuid))
 		return nil
@@ -317,7 +336,7 @@ func (s *ServiceImpl) SendConcepts(endpoint, jobID string) error {
 	err := s.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(endpoint))
 		if bucket == nil {
-			return fmt.Errorf("Bucket %v not found!", endpoint)
+			return fmt.Errorf("bucket %v not found", endpoint)
 		}
 
 		// This just logs errors in sending a concept.  Successes are logged in the RW app.
@@ -332,7 +351,7 @@ func (s *ServiceImpl) SendConcepts(endpoint, jobID string) error {
 		// Creates the workers.
 		wgResp.Add(s.writerWorkers)
 		for i := 0; i < s.writerWorkers; i++ {
-			go s.writeWorker(wgResp, requestChannel, responseChannel)
+			go s.writeWorker(&wgResp, requestChannel, responseChannel)
 		}
 
 		go func() {
@@ -365,7 +384,7 @@ func (s *ServiceImpl) SendConcepts(endpoint, jobID string) error {
 	return err
 }
 
-func (s *ServiceImpl) writeWorker(wg sync.WaitGroup, requestChannel <-chan conceptRequest, responseChannel chan<- conceptResponse) {
+func (s *ServiceImpl) writeWorker(wg *sync.WaitGroup, requestChannel <-chan conceptRequest, responseChannel chan<- conceptResponse) {
 	for req := range requestChannel {
 		err := s.sendSingleConcept(req.theType, req.uuid, req.payload, req.jobID)
 		responseChannel <- conceptResponse{
@@ -405,7 +424,7 @@ func (s *ServiceImpl) sendSingleConcept(endpoint, uuid, payload, transactionID s
 	}
 
 	if int(resp.StatusCode/100) != 2 {
-		return fmt.Errorf("Bad response from writer [%d]: %s", resp.StatusCode, fullURL)
+		return fmt.Errorf("bad response from writer [%d]: %s", resp.StatusCode, fullURL)
 	}
 	return err
 }

@@ -9,7 +9,10 @@ import (
 
 func (th *Handler) EnforceDataLoaded(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !th.service.IsDataLoaded() {
+		vars := mux.Vars(r)
+		endpoint := vars[endpointURLParameter]
+
+		if !th.service.IsDataLoaded(endpoint) {
 			w.Header().Set("Content-Type", "application/json")
 			writeJSONMessageWithStatus(w, "Data not loaded", http.StatusServiceUnavailable)
 			return

@@ -172,7 +172,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-var spareWorkers int = 10
+var spareWorkers = 10
 
 func getResilientClient(writerWorkers int) *pester.Client {
 	c := &http.Client{
@@ -203,7 +203,7 @@ func buildRoutes(th *tme.Handler) {
 
 	http.HandleFunc(status.BuildInfoPath, status.BuildInfoHandler)
 
-	var checks = []fthealth.Check{th.HealthCheck()}
+	var checks = th.HealthCheck()
 
 	timedHC := fthealth.TimedHealthCheck{
 		HealthCheck: fthealth.HealthCheck{

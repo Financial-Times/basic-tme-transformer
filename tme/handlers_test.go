@@ -8,31 +8,39 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"github.com/Financial-Times/service-status-go/gtg"
 	status "github.com/Financial-Times/service-status-go/httphandlers"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
-	"time"
 )
 
 type MockService struct {
-	isAllLoaded bool
-	db          map[string]map[string]BasicConcept
-	err         error
+	db            map[string]map[string]BasicConcept
+	err           error
+	loadingStatus map[string]bool
 }
 
-func NewMockService(isAllLoaded bool, db map[string]map[string]BasicConcept, err error) Service {
+func NewMockService(db map[string]map[string]BasicConcept, err error, loadingStatus map[string]bool) Service {
 	return &MockService{
-		isAllLoaded: isAllLoaded,
-		db:          db,
-		err:         err,
+		db:            db,
+		err:           err,
+		loadingStatus: loadingStatus,
 	}
 }
 
-func (ms *MockService) IsDataLoaded() bool {
-	return ms.isAllLoaded
+func (ms *MockService) GetLoadedTypes() []string {
+	var types []string
+	for k := range ms.db {
+		types = append(types, k)
+	}
+	return types
+}
+
+func (ms *MockService) IsDataLoaded(endpoint string) bool {
+	return ms.loadingStatus[endpoint]
 }
 
 func (ms *MockService) GetCount(endpoint string) (int, error) {
@@ -79,20 +87,19 @@ func (ms *MockService) SendConcepts(endpoint, jobID string) error {
 func TestHandlers_CodeAndBody(t *testing.T) {
 
 	data := []struct {
-		name       string
-		method     string
-		url        string
-		isLoaded   bool
-		resultCode int
-		resultBody string
-		err        error
-		db         map[string]map[string]BasicConcept
+		name          string
+		method        string
+		url           string
+		resultCode    int
+		resultBody    string
+		err           error
+		db            map[string]map[string]BasicConcept
+		loadingStatus map[string]bool
 	}{
 		{
 			"Success - Concept by UUID",
 			"GET",
 			"/transformers/genres/2a88a647-59bc-4043-8f1b-5add71ddf3dc",
-			true,
 			200,
 			"{\"uuid\":\"2a88a647-59bc-4043-8f1b-5add71ddf3dc\",\"prefLabel\":\"Test\"}\n",
 			nil,
@@ -104,12 +111,14 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 					},
 				},
 			},
+			map[string]bool{
+				"genres": true,
+			},
 		},
 		{
 			"Success - IDs",
 			"GET",
 			"/transformers/genres/__ids",
-			true,
 			200,
 			"",
 			nil,
@@ -121,12 +130,14 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 					},
 				},
 			},
+			map[string]bool{
+				"genres": true,
+			},
 		},
 		{
 			"Success - All concepts",
 			"GET",
 			"/transformers/genres",
-			true,
 			200,
 			"{\"uuid\":\"2a88a647-59bc-4043-8f1b-5add71ddf3dc\",\"prefLabel\":\"Test\"}\n",
 			nil,
@@ -138,12 +149,14 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 					},
 				},
 			},
+			map[string]bool{
+				"genres": true,
+			},
 		},
 		{
 			"Success - Count",
 			"GET",
 			"/transformers/genres/__count",
-			true,
 			200,
 			"1",
 			nil,
@@ -155,12 +168,14 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 					},
 				},
 			},
+			map[string]bool{
+				"genres": true,
+			},
 		},
 		{
 			"Fail - Get All Concepts Service Error",
 			"GET",
 			"/transformers/genres",
-			true,
 			500,
 			"{\"message\": \"Service error\"}\n",
 			errors.New("Service error"),
@@ -171,13 +186,15 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 						PrefLabel: "Test",
 					},
 				},
+			},
+			map[string]bool{
+				"genres": true,
 			},
 		},
 		{
 			"Fail - Get Single Concept Service Error",
 			"GET",
 			"/transformers/genres/2a88a647-59bc-4043-8f1b-5add71ddf3dc",
-			true,
 			500,
 			"{\"message\": \"Service error\"}\n",
 			errors.New("Service error"),
@@ -188,13 +205,15 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 						PrefLabel: "Test",
 					},
 				},
+			},
+			map[string]bool{
+				"genres": true,
 			},
 		},
 		{
 			"Fail - Get IDs Service Error",
 			"GET",
 			"/transformers/genres/__ids",
-			true,
 			500,
 			"{\"message\": \"Service error\"}\n",
 			errors.New("Service error"),
@@ -205,13 +224,15 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 						PrefLabel: "Test",
 					},
 				},
+			},
+			map[string]bool{
+				"genres": true,
 			},
 		},
 		{
 			"Fail - Get Count Service Error",
 			"GET",
 			"/transformers/genres/__count",
-			true,
 			500,
 			"{\"message\": \"Service error\"}\n",
 			errors.New("Service error"),
@@ -223,12 +244,14 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 					},
 				},
 			},
+			map[string]bool{
+				"genres": true,
+			},
 		},
 		{
 			"Success - Send Service",
 			"POST",
 			"/transformers/genres/send",
-			true,
 			202,
 			"IGNORE",
 			errors.New("Service error"),
@@ -240,12 +263,14 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 					},
 				},
 			},
+			map[string]bool{
+				"genres": true,
+			},
 		},
 		{
 			"Fail - Get Concept By UUID Not Found",
 			"GET",
 			"/transformers/genres/13ea8695-52c3-4557-952d-629fca9717e3",
-			true,
 			404,
 			"{\"message\": \"Genre not found\"}\n",
 			nil,
@@ -257,12 +282,14 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 					},
 				},
 			},
+			map[string]bool{
+				"genres": true,
+			},
 		},
 		{
 			"Success - Reload Concept",
 			"POST",
 			"/transformers/genres/__reload",
-			true,
 			202,
 			"{\"message\": \"Reloading genres\"}\n",
 			nil,
@@ -274,12 +301,15 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 					},
 				},
 			},
+			map[string]bool{
+				"genres": true,
+			},
 		},
 	}
 
 	for _, d := range data {
 		t.Run(d.name, func(t *testing.T) {
-			mockService := NewMockService(d.isLoaded, d.db, d.err)
+			mockService := NewMockService(d.db, d.err, d.loadingStatus)
 			handler := NewHandler(mockService)
 
 			req, _ := http.NewRequest(d.method, d.url, nil)
@@ -321,7 +351,10 @@ func TestHandler_G2GCheck_Good(t *testing.T) {
 			},
 		},
 	}
-	mockService := NewMockService(true, db, nil)
+	loadingStatus := map[string]bool{
+		"genres": true,
+	}
+	mockService := NewMockService(db, nil, loadingStatus)
 	handler := NewHandler(mockService)
 
 	router := mux.NewRouter()
@@ -343,7 +376,10 @@ func TestHandler_G2GCheck_Bad(t *testing.T) {
 			},
 		},
 	}
-	mockService := NewMockService(false, db, nil)
+	loadingStatus := map[string]bool{
+		"genres": false,
+	}
+	mockService := NewMockService(db, nil, loadingStatus)
 	handler := NewHandler(mockService)
 
 	router := mux.NewRouter()
@@ -365,12 +401,15 @@ func TestHandler_Healthcheck_Good(t *testing.T) {
 			},
 		},
 	}
-	mockService := NewMockService(true, db, nil)
+	loadingStatus := map[string]bool{
+		"genres": true,
+	}
+	mockService := NewMockService(db, nil, loadingStatus)
 	handler := NewHandler(mockService)
 
 	router := mux.NewRouter()
 
-	var checks = []fthealth.Check{handler.HealthCheck()}
+	var checks = handler.HealthCheck()
 
 	timedHC := fthealth.TimedHealthCheck{
 		HealthCheck: fthealth.HealthCheck{
@@ -395,6 +434,7 @@ func TestHandler_Healthcheck_Good(t *testing.T) {
 		Name string
 		OK   bool
 	}
+
 	err = json.Unmarshal(b, &output)
 	assert.NoError(t, err)
 
@@ -412,11 +452,14 @@ func TestHandler_Healthcheck_Bad(t *testing.T) {
 			},
 		},
 	}
-	mockService := NewMockService(false, db, nil)
+	loadingStatus := map[string]bool{
+		"genres": false,
+	}
+	mockService := NewMockService(db, nil, loadingStatus)
 	handler := NewHandler(mockService)
 
 	router := mux.NewRouter()
-	var checks = []fthealth.Check{handler.HealthCheck()}
+	var checks = handler.HealthCheck()
 
 	timedHC := fthealth.TimedHealthCheck{
 		HealthCheck: fthealth.HealthCheck{
@@ -441,6 +484,7 @@ func TestHandler_Healthcheck_Bad(t *testing.T) {
 		Name string
 		OK   bool
 	}
+
 	err = json.Unmarshal(b, &output)
 	assert.NoError(t, err)
 

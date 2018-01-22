@@ -92,7 +92,7 @@ func TestInit(t *testing.T) {
 	defer func() {
 		repo.Done()
 	}()
-	assert.False(t, service.IsDataLoaded())
+	assert.False(t, service.IsDataLoaded("topics"))
 }
 
 func createTestTmeService(repos map[string]tmereader.Repository, cacheFileName string, httpClient httpClient) Service {

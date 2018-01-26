@@ -12,7 +12,7 @@ resources:
   requests:
     memory: 800Mi
   limits:
-    memory: 1Gi
+    memory: 1.5Gi
 cache:
   size: 5Gi
   path: "/"

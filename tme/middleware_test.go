@@ -11,10 +11,10 @@ import (
 func TestHandler_Middleware(t *testing.T) {
 
 	data := []struct {
-		name       string
-		url        string
-		loadingStatus    map[string]bool
-		resultCode int
+		name          string
+		url           string
+		loadingStatus map[string]bool
+		resultCode    int
 	}{
 		{
 			"Success",

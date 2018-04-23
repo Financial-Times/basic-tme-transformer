@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	"github.com/Financial-Times/go-logger"
 	"github.com/Financial-Times/service-status-go/gtg"
 	"github.com/Financial-Times/transactionid-utils-go"
 	"github.com/gorilla/handlers"
@@ -92,13 +93,24 @@ func (th *Handler) GetCount(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (th *Handler) HandleSendConcepts(resp http.ResponseWriter, req *http.Request) {
+	var ignoreHash bool
+	var err error
 	vars := mux.Vars(req)
+	ignoreHashHeader := req.Header.Get("X-Ignore-Hash")
+	if ignoreHashHeader != "" {
+		ignoreHash, err = strconv.ParseBool(ignoreHashHeader)
+		if err != nil {
+			logger.WithError(err).Error("Error parsing X-Ignore-Hash request header")
+			writeJSONMessageWithStatus(resp, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 	t := vars[endpointURLParameter]
 
 	jobID := strings.Replace(transactionidutils.NewTransactionID(), "tid", "job", -1)
 
 	go func(th *Handler, t string, jobID string) {
-		th.service.SendConcepts(t, jobID)
+		th.service.SendConcepts(t, jobID, ignoreHash)
 	}(th, t, jobID)
 
 	resp.WriteHeader(http.StatusAccepted)
@@ -156,8 +168,8 @@ func (th *Handler) HealthCheck() []fthealth.Check {
 }
 
 func (th *Handler) G2GCheck() gtg.Status {
-	for _,v := range th.service.GetLoadedTypes() {
-		if th.service.IsDataLoaded(v){
+	for _, v := range th.service.GetLoadedTypes() {
+		if th.service.IsDataLoaded(v) {
 			return gtg.Status{GoodToGo: true}
 		}
 	}

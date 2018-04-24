@@ -327,6 +327,7 @@ type conceptRequest struct {
 }
 
 func (s *ServiceImpl) SendConcepts(endpoint, jobID string, ignoreHash bool) error {
+	fmt.Printf("Ignore hash is set to %s\n", ignoreHash)
 	s.RLock()
 	defer s.RUnlock()
 	responseChannel := make(chan conceptResponse)
@@ -417,6 +418,7 @@ func (s *ServiceImpl) sendSingleConcept(endpoint, uuid, payload, transactionID s
 	req.Header.Set("X-Ignore-Hash", strconv.FormatBool(ignoreHash))
 	req.ContentLength = int64(len(payload))
 
+	fmt.Printf("Ignore hash header is %v\n", req.Header.Get("X-Ignore-Hash"))
 	resp, err := s.httpClient.Do(req)
 	defer resp.Body.Close()
 

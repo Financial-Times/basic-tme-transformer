@@ -35,7 +35,7 @@ jobs:
       - run:
           name: Upload coverage report
           command: |
-            go/bin/goveralls -coverprofile=$CIRCLE_TEST_REPORTS/coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
+            /go/bin/goveralls -coverprofile=$CIRCLE_TEST_REPORTS/coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
       - store_test_results:
           path: /tmp/test-reports
   dockerfile:

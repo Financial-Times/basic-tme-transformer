@@ -18,12 +18,12 @@ jobs:
           name: External Dependancies
           command: |
             go get -u github.com/mattn/goveralls
-            go get -u github.com/golang/dep/cmd/dep
             go get -u github.com/jstemmer/go-junit-report
+            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run:
           name: Download vendored dependancies
           command: |
-            dep ensure
+            dep ensure -v -vendor-only
       - run:
           name: Go Build
           command: |
@@ -31,8 +31,7 @@ jobs:
       - run:
           name: Run tests and create coverage report
           command: |
-            go test ./... -v -race -cover -coverprofile=$CIRCLE_ARTIFACTS/coverage.out | go-junit-report > $CIRCLE_TEST_REPORTS/golang/junit.xml
-            sed -i "/_mock/d" ${CIRCLE_ARTIFACTS}/coverage.out
+            go test ./... -race -cover -coverprofile=$CIRCLE_COVERAGE_REPORT/coverage.out | go-junit-report > $CIRCLE_TEST_REPORTS/golang/junit.xml
       - run:
           name: Upload coverage report
           command: |

@@ -15,6 +15,7 @@ import (
 	"github.com/Financial-Times/transactionid-utils-go"
 	"github.com/boltdb/bolt"
 	log "github.com/sirupsen/logrus"
+	"strconv"
 )
 
 type httpClient interface {
@@ -28,7 +29,7 @@ type Service interface {
 	GetAllConcepts(endpoint string) (io.PipeReader, error)
 	GetConceptByUUID(endpoint, uuid string) (BasicConcept, bool, error)
 	GetConceptUUIDs(endpoint string) (io.PipeReader, error)
-	SendConcepts(endpoint, jobID string) error
+	SendConcepts(endpoint, jobID string, ignoreHash bool) error
 	Reload(endpoint string) error
 	GetLoadedTypes() []string
 }
@@ -57,7 +58,7 @@ func NewService(repos map[string]tmereader.Repository, cacheFilename string, htt
 		maxTmeRecords:  maxTmeRecords,
 		writerEndpoint: writerEndpoint,
 		writerWorkers:  writerWorkers,
-		dataLoaded: map[string]bool{},
+		dataLoaded:     map[string]bool{},
 	}
 	go func(service *ServiceImpl) {
 		err := service.loadDB()
@@ -69,9 +70,9 @@ func NewService(repos map[string]tmereader.Repository, cacheFilename string, htt
 }
 
 // GetLoadedTypes - returns a list of the loaded types, rather than assuming everything in the mapping.
-func (s *ServiceImpl) GetLoadedTypes() []string{
+func (s *ServiceImpl) GetLoadedTypes() []string {
 	var types []string
-	for k := range s.repos{
+	for k := range s.repos {
 		types = append(types, k)
 	}
 	return types
@@ -107,7 +108,7 @@ func (s *ServiceImpl) openDB() error {
 // Reload - Reloads the data for a specific endpoint
 func (s *ServiceImpl) Reload(endpoint string) error {
 	log.Infof("Reloading %s", endpoint)
-	s.setDataLoaded(endpoint,false)
+	s.setDataLoaded(endpoint, false)
 	if err := s.openDB(); err != nil {
 		return err
 	}
@@ -120,7 +121,7 @@ func (s *ServiceImpl) Reload(endpoint string) error {
 	if err != nil {
 		return err
 	}
-	s.setDataLoaded(endpoint,true)
+	s.setDataLoaded(endpoint, true)
 	log.Infof("Completed %s load", endpoint)
 	return nil
 }
@@ -325,7 +326,7 @@ type conceptRequest struct {
 	payload string
 }
 
-func (s *ServiceImpl) SendConcepts(endpoint, jobID string) error {
+func (s *ServiceImpl) SendConcepts(endpoint, jobID string, ignoreHash bool) error {
 	s.RLock()
 	defer s.RUnlock()
 	responseChannel := make(chan conceptResponse)
@@ -351,7 +352,7 @@ func (s *ServiceImpl) SendConcepts(endpoint, jobID string) error {
 		// Creates the workers.
 		wgResp.Add(s.writerWorkers)
 		for i := 0; i < s.writerWorkers; i++ {
-			go s.writeWorker(&wgResp, requestChannel, responseChannel)
+			go s.writeWorker(&wgResp, requestChannel, responseChannel, ignoreHash)
 		}
 
 		go func() {
@@ -384,9 +385,9 @@ func (s *ServiceImpl) SendConcepts(endpoint, jobID string) error {
 	return err
 }
 
-func (s *ServiceImpl) writeWorker(wg *sync.WaitGroup, requestChannel <-chan conceptRequest, responseChannel chan<- conceptResponse) {
+func (s *ServiceImpl) writeWorker(wg *sync.WaitGroup, requestChannel <-chan conceptRequest, responseChannel chan<- conceptResponse, ignoreHash bool) {
 	for req := range requestChannel {
-		err := s.sendSingleConcept(req.theType, req.uuid, req.payload, req.jobID)
+		err := s.sendSingleConcept(req.theType, req.uuid, req.payload, req.jobID, ignoreHash)
 		responseChannel <- conceptResponse{
 			uuid:     req.uuid,
 			jobID:    req.jobID,
@@ -396,7 +397,7 @@ func (s *ServiceImpl) writeWorker(wg *sync.WaitGroup, requestChannel <-chan conc
 	wg.Done()
 }
 
-func (s *ServiceImpl) sendSingleConcept(endpoint, uuid, payload, transactionID string) error {
+func (s *ServiceImpl) sendSingleConcept(endpoint, uuid, payload, transactionID string, ignoreHash bool) error {
 	fullURL, err := url.Parse(s.writerEndpoint + "/" + uuid)
 	if err != nil {
 		log.Errorf("Error parsing url %s: %s", s.writerEndpoint+"/"+uuid, err)
@@ -413,6 +414,7 @@ func (s *ServiceImpl) sendSingleConcept(endpoint, uuid, payload, transactionID s
 	}
 	req.Header.Set(transactionidutils.TransactionIDHeader, transactionID)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Ignore-Hash", strconv.FormatBool(ignoreHash))
 	req.ContentLength = int64(len(payload))
 
 	resp, err := s.httpClient.Do(req)

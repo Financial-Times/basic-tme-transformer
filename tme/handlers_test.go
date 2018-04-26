@@ -11,6 +11,7 @@ import (
 	"time"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	"github.com/Financial-Times/go-logger"
 	"github.com/Financial-Times/service-status-go/gtg"
 	status "github.com/Financial-Times/service-status-go/httphandlers"
 	"github.com/gorilla/mux"
@@ -21,6 +22,10 @@ type MockService struct {
 	db            map[string]map[string]BasicConcept
 	err           error
 	loadingStatus map[string]bool
+}
+
+func init() {
+	logger.InitLogger("basic-tme-transformer", "info")
 }
 
 func NewMockService(db map[string]map[string]BasicConcept, err error, loadingStatus map[string]bool) Service {
@@ -80,7 +85,7 @@ func (ms *MockService) GetConceptUUIDs(endpoint string) (io.PipeReader, error) {
 	}()
 	return *pr, ms.err
 }
-func (ms *MockService) SendConcepts(endpoint, jobID string) error {
+func (ms *MockService) SendConcepts(endpoint, jobID string, ignoreHash bool) error {
 	return ms.err
 }
 

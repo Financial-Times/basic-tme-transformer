@@ -229,17 +229,17 @@ func TestServiceImpl_SendConcepts(t *testing.T) {
 	time.Sleep(RepoSleepDuration)
 
 	t.Run("Success", func(t *testing.T) {
-		err := svc.SendConcepts("topics", "job123")
+		err := svc.SendConcepts("topics", "job123", false)
 		assert.NoError(t, err)
 	})
 
 	t.Run("Success - No job ID", func(t *testing.T) {
-		err := svc.SendConcepts("topics", "")
+		err := svc.SendConcepts("topics", "", false)
 		assert.NoError(t, err)
 	})
 
 	t.Run("Error - wrong type", func(t *testing.T) {
-		err := svc.SendConcepts("fake", "job123")
+		err := svc.SendConcepts("fake", "job123", false)
 		assert.Error(t, err)
 	})
 }
@@ -248,7 +248,7 @@ func TestServiceImpl_SendConcepts_ServiceError(t *testing.T) {
 	svc := createTestService(t, 503, nil)
 	time.Sleep(RepoSleepDuration)
 
-	err := svc.SendConcepts("topics", "job123")
+	err := svc.SendConcepts("topics", "job123", false)
 	// We're expecting that there's no error as we don't want a single failure to kill the entire job.
 	assert.NoError(t, err)
 }
@@ -257,7 +257,7 @@ func TestServiceImpl_SendConcepts_NoErrorWhenNotModified(t *testing.T) {
 	svc := createTestService(t, 304, nil)
 	time.Sleep(RepoSleepDuration)
 
-	err := svc.SendConcepts("topics", "job123")
+	err := svc.SendConcepts("topics", "job123", false)
 	// We're expecting that there's no error when the concept-rw-s3 returns StatusNotModified when hashing is enabled.
 	assert.NoError(t, err)
 }

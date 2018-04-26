@@ -12,15 +12,17 @@ Alphaville Series, Brands, Genres, Locations, People, Sections, Special Reports,
 
 Download the source code, dependencies and test dependencies:
 
+        curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
         go get -u github.com/Financial-Times/basic-tme-transformer
         cd $GOPATH/src/github.com/Financial-Times/basic-tme-transformer
-        go get -t
+        dep ensure -v -vendor-only
 
 
 ## Running locally
 
 1. Run the tests and install the binary:
 
+        curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
         cd $GOPATH/src/github.com/Financial-Times/basic-tme-transformer
         go test -race ./...
         go install

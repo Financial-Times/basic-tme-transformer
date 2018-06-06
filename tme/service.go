@@ -11,11 +11,12 @@ import (
 	"sync"
 	"time"
 
+	"strconv"
+
 	"github.com/Financial-Times/tme-reader/tmereader"
 	"github.com/Financial-Times/transactionid-utils-go"
 	"github.com/boltdb/bolt"
 	log "github.com/sirupsen/logrus"
-	"strconv"
 )
 
 type httpClient interface {
@@ -30,6 +31,8 @@ type Service interface {
 	GetConceptByUUID(endpoint, uuid string) (BasicConcept, bool, error)
 	GetConceptUUIDs(endpoint string) (io.PipeReader, error)
 	SendConcepts(endpoint, jobID string, ignoreHash bool) error
+	RefreshConceptByUUID(endpoint, uuid string) (BasicConcept, bool, error)
+	SendConceptByUUID(txID, endpoint, uuid string, ignoreHash bool) error
 	Reload(endpoint string) error
 	GetLoadedTypes() []string
 }
@@ -288,6 +291,40 @@ func (s *ServiceImpl) GetConceptByUUID(endpoint, uuid string) (BasicConcept, boo
 	return cachedConcept, true, nil
 }
 
+// RefreshConceptByUUID - updates and returns a specific concept.
+func (s *ServiceImpl) RefreshConceptByUUID(endpoint, uuid string) (BasicConcept, bool, error) {
+	term, err := s.repos[endpoint].GetTmeTermById(uuid)
+	if err != nil {
+		return BasicConcept{}, false, err
+	}
+
+	s.Lock()
+	defer s.Unlock()
+
+	concept := transformConcept(term.(Term), endpoint)
+	marshalledConcept, err := json.Marshal(concept)
+	if err != nil {
+		return BasicConcept{}, false, err
+	}
+
+	if err := s.db.Batch(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(endpoint))
+		if bucket == nil {
+			return fmt.Errorf("cache bucket [%v] not found", endpoint)
+		}
+
+		if err := bucket.Put([]byte(concept.UUID), marshalledConcept); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		log.Errorf("Error storing to cache: %+v.", err)
+	}
+
+	return concept, true, nil
+}
+
 func (s *ServiceImpl) GetConceptUUIDs(endpoint string) (io.PipeReader, error) {
 	s.RLock()
 	pv, pw := io.Pipe()
@@ -324,6 +361,25 @@ type conceptRequest struct {
 	jobID   string
 	theType string
 	payload string
+}
+
+func (s *ServiceImpl) SendConceptByUUID(txID, endpoint, uuid string, ignoreHash bool) error {
+	s.RLock()
+	defer s.RUnlock()
+
+	concept, ok, err := s.RefreshConceptByUUID(endpoint, uuid)
+	if err != nil {
+		return err
+	} else if !ok {
+		return errors.New("concept not found")
+	}
+
+	marshalledConcept, err := json.Marshal(concept)
+	if err != nil {
+		return err
+	}
+
+	return s.sendSingleConcept(endpoint, uuid, string(marshalledConcept), txID, ignoreHash)
 }
 
 func (s *ServiceImpl) SendConcepts(endpoint, jobID string, ignoreHash bool) error {

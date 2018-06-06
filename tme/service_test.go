@@ -35,6 +35,7 @@ func (c mockHttpClient) Do(req *http.Request) (resp *http.Response, err error) {
 type mockTmeRepo struct {
 	sync.Mutex
 	terms []Term
+	term  Term
 	err   error
 	count int
 }
@@ -51,7 +52,7 @@ func (d *mockTmeRepo) GetTmeTermsFromIndex(startRecord int) ([]interface{}, erro
 
 // Never used
 func (d *mockTmeRepo) GetTmeTermById(uuid string) (interface{}, error) {
-	return nil, nil
+	return d.term, d.err
 }
 
 type blockingRepo struct {
@@ -193,6 +194,14 @@ func TestServiceImpl_GetConceptUUIDs_Success(t *testing.T) {
 	wg.Wait()
 	assert.NoError(t, err)
 	assert.Equal(t, GetConceptUUIDsResult, res)
+}
+
+func TestServiceImpl_SendConceptByUUID_Success(t *testing.T) {
+	svc := createTestService(t, 200, nil)
+	time.Sleep(RepoSleepDuration)
+
+	err := svc.SendConceptByUUID("tx_id", "topics", "14fa0405-c625-3061-a1a0-a00643fc073f", false)
+	assert.NoError(t, err)
 }
 
 func TestServiceImpl_GetConceptByUUID(t *testing.T) {

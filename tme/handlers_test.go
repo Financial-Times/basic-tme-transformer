@@ -56,6 +56,24 @@ func (ms *MockService) Reload(endpoint string) error {
 	return ms.err
 }
 
+func (ms *MockService) RefreshConceptByUUID(endpoint, uuid string) (BasicConcept, bool, error) {
+	bucket, ok := ms.db[endpoint]
+	if !ok {
+		return BasicConcept{}, false, errors.New("not found")
+	}
+
+	concept, ok := bucket[uuid]
+	if !ok {
+		return BasicConcept{}, false, errors.New("not found")
+	}
+
+	return concept, true, nil
+}
+
+func (ms *MockService) SendConceptByUUID(txID, endpoint, uuid string, ignoreHash bool) error {
+	return ms.err
+}
+
 func (ms *MockService) GetAllConcepts(endpoint string) (io.PipeReader, error) {
 	pr, pw := io.Pipe()
 	go func() {
@@ -305,6 +323,39 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 						PrefLabel: "Test",
 					},
 				},
+			},
+			map[string]bool{
+				"genres": true,
+			},
+		},
+		{
+			"Success - Send concept",
+			"POST",
+			"/transformers/genres/2a88a647-59bc-4043-8f1b-5add71ddf3dc/send",
+			200,
+			"IGNORE",
+			nil,
+			map[string]map[string]BasicConcept{
+				"genres": {
+					"2a88a647-59bc-4043-8f1b-5add71ddf3dc": {
+						UUID:      "2a88a647-59bc-4043-8f1b-5add71ddf3dc",
+						PrefLabel: "Test",
+					},
+				},
+			},
+			map[string]bool{
+				"genres": true,
+			},
+		},
+		{
+			"Failure - Send concept",
+			"POST",
+			"/transformers/genres/2a88a647-59bc-4043-8f1b-5add71ddf3dc/send",
+			500,
+			"IGNORE",
+			errors.New("not found"),
+			map[string]map[string]BasicConcept{
+				"genres": {},
 			},
 			map[string]bool{
 				"genres": true,

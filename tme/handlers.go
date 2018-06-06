@@ -29,7 +29,7 @@ func NewHandler(service Service) *Handler {
 	}
 }
 
-var (
+const (
 	endpointURLParameter = "endpoint"
 	uuidURLParameter     = "uuid"
 )
@@ -62,6 +62,32 @@ func (th *Handler) HandleGetSingleConcept(resp http.ResponseWriter, req *http.Re
 		return
 	}
 	writeJSONResponse(obj, found, EndpointTypeMappings[t]["type"].(string), resp)
+}
+
+func (th *Handler) HandleSendSingle(resp http.ResponseWriter, req *http.Request) {
+	var ignoreHash bool
+	var err error
+	vars := mux.Vars(req)
+	ignoreHashHeader := req.Header.Get("X-Ignore-Hash")
+	if ignoreHashHeader != "" {
+		ignoreHash, err = strconv.ParseBool(ignoreHashHeader)
+		if err != nil {
+			logger.WithError(err).Error("Error parsing X-Ignore-Hash request header")
+			writeJSONMessageWithStatus(resp, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	endp := vars[endpointURLParameter]
+	uuid := vars[uuidURLParameter]
+	txID := transactionidutils.NewTransactionID()
+
+	resp.Header().Add("Content-Type", "application/json")
+	if err := th.service.SendConceptByUUID(txID, endp, uuid, ignoreHash); err != nil {
+		writeJSONMessageWithStatus(resp, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSONMessageWithStatus(resp, fmt.Sprintf("Updated %s %s", endp, uuid), http.StatusOK)
 }
 
 func (th *Handler) GetIDs(resp http.ResponseWriter, req *http.Request) {
@@ -203,12 +229,17 @@ func Router(th *Handler) *mux.Router {
 		"POST": th.EnforceTaxonomy(http.HandlerFunc(th.HandleReloadConcepts)),
 	}
 
+	sendSingleHandler := handlers.MethodHandler{
+		"POST": th.EnforceDataLoaded(th.EnforceTaxonomy(http.HandlerFunc(th.HandleSendSingle))),
+	}
+
 	servicesRouter.Handle("/transformers/{endpoint}", getFullHandler)
 	servicesRouter.Handle("/transformers/{endpoint}/__count", countHandler)
 	servicesRouter.Handle("/transformers/{endpoint}/__ids", getIDsHandler)
 	servicesRouter.Handle("/transformers/{endpoint}/__reload", reloadConceptsHandler)
 	servicesRouter.Handle("/transformers/{endpoint}/send", sendConceptsHandler)
 	servicesRouter.Handle("/transformers/{endpoint}/{uuid}", getSingleHandler)
+	servicesRouter.Handle("/transformers/{endpoint}/{uuid}/send", sendSingleHandler)
 	return servicesRouter
 
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -15,7 +16,7 @@ import (
 
 	"github.com/Financial-Times/tme-reader/tmereader"
 	"github.com/Financial-Times/transactionid-utils-go"
-	"github.com/boltdb/bolt"
+	"github.com/coreos/bbolt"
 	log "github.com/sirupsen/logrus"
 )
 

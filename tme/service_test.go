@@ -44,7 +44,7 @@ func (d *mockTmeRepo) GetTmeTermsFromIndex(startRecord int) ([]interface{}, erro
 	defer func() {
 		d.count++
 	}()
-	if len(d.terms) == d.count {
+	if len(d.terms) <= d.count {
 		return nil, d.err
 	}
 	return []interface{}{d.terms[d.count]}, d.err

@@ -301,7 +301,7 @@ func (s *ServiceImpl) RefreshConceptByUUID(endpoint, uuid string) (BasicConcept,
 	}
 
 	concept := transformConcept(term.(Term), endpoint)
-	marshalledConcept, err := s.marshal(concept)
+	marshalledConcept, err := json.Marshal(concept)
 	if err != nil {
 		return BasicConcept{}, false, err
 	}

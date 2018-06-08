@@ -44,12 +44,12 @@ func (*Transformer) UnMarshallTerm(content []byte) (interface{}, error) {
 	return term, nil
 }
 
-func transformConcept(tmeTerm Term, endpoint string) BasicConcept {
+func transformConcept(tmeTerm Term, endpoint string) *BasicConcept {
 	identifier := buildTmeIdentifier(tmeTerm.RawID, EndpointTypeMappings[endpoint]["taxonomy"].(string))
 	generatedUUID := uuid.NewMD5(uuid.UUID{}, []byte(identifier)).String()
 	aliasList := buildAliasList(tmeTerm.Aliases)
 
-	basicConcept := BasicConcept{
+	basicConcept := &BasicConcept{
 		UUID:           generatedUUID,
 		PrefLabel:      tmeTerm.CanonicalName,
 		Type:           EndpointTypeMappings[endpoint]["type"].(string),

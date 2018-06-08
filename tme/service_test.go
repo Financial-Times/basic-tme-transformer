@@ -221,7 +221,7 @@ func TestServiceImpl_GetConceptByUUID(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.False(t, found)
-		assert.Empty(t, bc.PrefLabel)
+		assert.Nil(t, bc)
 	})
 
 	t.Run("Error - wrong uuid", func(t *testing.T) {
@@ -229,7 +229,7 @@ func TestServiceImpl_GetConceptByUUID(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.False(t, found)
-		assert.Empty(t, bc.PrefLabel)
+		assert.Nil(t, bc)
 	})
 }
 

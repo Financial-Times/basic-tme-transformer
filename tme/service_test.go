@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -152,7 +153,9 @@ func TestServiceImpl_GetAllConcepts_Success(t *testing.T) {
 	}(&pv, &wg)
 	wg.Wait()
 	assert.NoError(t, err)
-	assert.Equal(t, GetAllConceptsResult, res)
+	for _, v := range strings.Split(GetAllConceptsResult, "\n") {
+		assert.Contains(t, res, v)
+	}
 }
 
 func TestServiceImpl_GetAllConcepts_Error(t *testing.T) {
@@ -193,7 +196,9 @@ func TestServiceImpl_GetConceptUUIDs_Success(t *testing.T) {
 	}(&pv, &wg)
 	wg.Wait()
 	assert.NoError(t, err)
-	assert.Equal(t, GetConceptUUIDsResult, res)
+	for _, v := range strings.Split(GetConceptUUIDsResult, "\n") {
+		assert.Contains(t, res, v)
+	}
 }
 
 func TestServiceImpl_SendConceptByUUID_Success(t *testing.T) {

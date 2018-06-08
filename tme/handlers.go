@@ -238,8 +238,8 @@ func Router(th *Handler) *mux.Router {
 	servicesRouter.Handle("/transformers/{endpoint}/__ids", getIDsHandler)
 	servicesRouter.Handle("/transformers/{endpoint}/__reload", reloadConceptsHandler)
 	servicesRouter.Handle("/transformers/{endpoint}/send", sendConceptsHandler)
+	servicesRouter.Handle("/transformers/{endpoint}/sendraw/{uuid}", sendSingleHandler)
 	servicesRouter.Handle("/transformers/{endpoint}/{uuid}", getSingleHandler)
-	servicesRouter.Handle("/transformers/{endpoint}/{uuid}/send", sendSingleHandler)
 	return servicesRouter
 
 }

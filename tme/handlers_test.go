@@ -329,9 +329,9 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 			},
 		},
 		{
-			"Success - Send concept",
+			"Success - Send single concept",
 			"POST",
-			"/transformers/genres/2a88a647-59bc-4043-8f1b-5add71ddf3dc/send",
+			"/transformers/genres/sendraw/2a88a647-59bc-4043-8f1b-5add71ddf3dc",
 			200,
 			"IGNORE",
 			nil,
@@ -348,9 +348,9 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 			},
 		},
 		{
-			"Failure - Send concept",
+			"Failure - Send single concept",
 			"POST",
-			"/transformers/genres/2a88a647-59bc-4043-8f1b-5add71ddf3dc/send",
+			"/transformers/genres/sendraw/2a88a647-59bc-4043-8f1b-5add71ddf3dc",
 			500,
 			"IGNORE",
 			errors.New("not found"),

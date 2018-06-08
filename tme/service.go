@@ -99,6 +99,7 @@ func (s *ServiceImpl) openDB() error {
 	defer s.Unlock()
 	log.Infof("Opening database '%v'.", s.cacheFileName)
 	if s.db == nil {
+		os.Remove(s.cacheFileName)
 		var err error
 		if s.db, err = bolt.Open(s.cacheFileName, 0600, &bolt.Options{Timeout: 1 * time.Second}); err != nil {
 			log.Errorf("Error opening cache file for init: %v.", err.Error())
@@ -298,14 +299,14 @@ func (s *ServiceImpl) RefreshConceptByUUID(endpoint, uuid string) (BasicConcept,
 		return BasicConcept{}, false, err
 	}
 
-	s.Lock()
-	defer s.Unlock()
-
 	concept := transformConcept(term.(Term), endpoint)
-	marshalledConcept, err := json.Marshal(concept)
+	marshalledConcept, err := s.marshal(concept)
 	if err != nil {
 		return BasicConcept{}, false, err
 	}
+
+	s.Lock()
+	defer s.Unlock()
 
 	if err := s.db.Batch(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(endpoint))
@@ -364,9 +365,6 @@ type conceptRequest struct {
 }
 
 func (s *ServiceImpl) SendConceptByUUID(txID, endpoint, uuid string, ignoreHash bool) error {
-	s.RLock()
-	defer s.RUnlock()
-
 	concept, ok, err := s.RefreshConceptByUUID(endpoint, uuid)
 	if err != nil {
 		return err
@@ -379,7 +377,7 @@ func (s *ServiceImpl) SendConceptByUUID(txID, endpoint, uuid string, ignoreHash 
 		return err
 	}
 
-	return s.sendSingleConcept(endpoint, uuid, string(marshalledConcept), txID, ignoreHash)
+	return s.sendSingleConcept(endpoint, concept.UUID, string(marshalledConcept), txID, ignoreHash)
 }
 
 func (s *ServiceImpl) SendConcepts(endpoint, jobID string, ignoreHash bool) error {
@@ -477,7 +475,7 @@ func (s *ServiceImpl) sendSingleConcept(endpoint, uuid, payload, transactionID s
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 304 {
-		log.WithFields(log.Fields{"transaction_id": transactionID, "UUID": uuid}).Info("Concept has not been updated since last update, skipping")
+		log.WithFields(log.Fields{"transaction_id": transactionID, "UUID": uuid}).Debug("Concept has not been updated since last update, skipping")
 		return nil
 	}
 

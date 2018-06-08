@@ -6,7 +6,6 @@ import (
 
 	"github.com/Financial-Times/tme-reader/tmereader"
 	"github.com/pborman/uuid"
-	"github.com/pkg/errors"
 )
 
 const financialTimesBrandUuid = "dbb0bdae-1f0c-11e4-b0cb-b2227cce2b54"
@@ -37,7 +36,12 @@ func (*Transformer) UnMarshallTaxonomy(contents []byte) ([]interface{}, error) {
 }
 
 func (*Transformer) UnMarshallTerm(content []byte) (interface{}, error) {
-	return nil, errors.New("Not Implemented")
+	term := Term{}
+	err := xml.Unmarshal(content, &term)
+	if err != nil {
+		return nil, err
+	}
+	return term, nil
 }
 
 func transformConcept(tmeTerm Term, endpoint string) BasicConcept {

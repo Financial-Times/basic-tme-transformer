@@ -56,6 +56,24 @@ func (ms *MockService) Reload(endpoint string) error {
 	return ms.err
 }
 
+func (ms *MockService) RefreshConceptByUUID(endpoint, uuid string) (*BasicConcept, bool, error) {
+	bucket, ok := ms.db[endpoint]
+	if !ok {
+		return nil, false, errors.New("not found")
+	}
+
+	concept, ok := bucket[uuid]
+	if !ok {
+		return nil, false, errors.New("not found")
+	}
+
+	return &concept, true, nil
+}
+
+func (ms *MockService) SendConceptByUUID(txID, endpoint, uuid string, ignoreHash bool) error {
+	return ms.err
+}
+
 func (ms *MockService) GetAllConcepts(endpoint string) (io.PipeReader, error) {
 	pr, pw := io.Pipe()
 	go func() {
@@ -68,9 +86,12 @@ func (ms *MockService) GetAllConcepts(endpoint string) (io.PipeReader, error) {
 	}()
 	return *pr, ms.err
 }
-func (ms *MockService) GetConceptByUUID(endpoint, uuid string) (BasicConcept, bool, error) {
+func (ms *MockService) GetConceptByUUID(endpoint, uuid string) (*BasicConcept, bool, error) {
 	c, ok := ms.db[endpoint][uuid]
-	return c, ok, ms.err
+	if !ok {
+		return nil, false, ms.err
+	}
+	return &c, true, nil
 }
 func (ms *MockService) GetConceptUUIDs(endpoint string) (io.PipeReader, error) {
 	pr, pw := io.Pipe()
@@ -203,14 +224,7 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 			500,
 			"{\"message\": \"Service error\"}\n",
 			errors.New("Service error"),
-			map[string]map[string]BasicConcept{
-				"genres": {
-					"2a88a647-59bc-4043-8f1b-5add71ddf3dc": {
-						UUID:      "2a88a647-59bc-4043-8f1b-5add71ddf3dc",
-						PrefLabel: "Test",
-					},
-				},
-			},
+			map[string]map[string]BasicConcept{},
 			map[string]bool{
 				"genres": true,
 			},
@@ -305,6 +319,39 @@ func TestHandlers_CodeAndBody(t *testing.T) {
 						PrefLabel: "Test",
 					},
 				},
+			},
+			map[string]bool{
+				"genres": true,
+			},
+		},
+		{
+			"Success - Send single concept",
+			"POST",
+			"/transformers/genres/sendraw/2a88a647-59bc-4043-8f1b-5add71ddf3dc",
+			200,
+			"IGNORE",
+			nil,
+			map[string]map[string]BasicConcept{
+				"genres": {
+					"2a88a647-59bc-4043-8f1b-5add71ddf3dc": {
+						UUID:      "2a88a647-59bc-4043-8f1b-5add71ddf3dc",
+						PrefLabel: "Test",
+					},
+				},
+			},
+			map[string]bool{
+				"genres": true,
+			},
+		},
+		{
+			"Failure - Send single concept",
+			"POST",
+			"/transformers/genres/sendraw/2a88a647-59bc-4043-8f1b-5add71ddf3dc",
+			500,
+			"IGNORE",
+			errors.New("not found"),
+			map[string]map[string]BasicConcept{
+				"genres": {},
 			},
 			map[string]bool{
 				"genres": true,

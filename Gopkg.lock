@@ -66,12 +66,6 @@
   version = "1.0.0"
 
 [[projects]]
-  name = "github.com/boltdb/bolt"
-  packages = ["."]
-  revision = "2f1ce7a837dcb8da3ec595b1dac9d0632f0f99e8"
-  version = "v1.3.1"
-
-[[projects]]
   branch = "master"
   name = "github.com/cyberdelia/go-metrics-graphite"
   packages = ["."]
@@ -145,6 +139,12 @@
   name = "github.com/kr/text"
   packages = ["."]
   revision = "7cafcd837844e784b526369c9bce262804aebc60"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/neverlee/keymutex"
+  packages = ["."]
+  revision = "f593aa834bf9f05e61eef08bcae8023b1e12685a"
 
 [[projects]]
   name = "github.com/pborman/uuid"
@@ -230,6 +230,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1e9127b15cb878e662b8cbf859890bedde6952b1a4264d72143a281f6fc7fd59"
+  inputs-digest = "f956781c9b1f93ae7dc64aa7d84b5c9487d195f334c2855dc0998df9a115b83e"
   solver-name = "gps-cdcl"
   solver-version = 1

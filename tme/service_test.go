@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -35,6 +36,7 @@ func (c mockHttpClient) Do(req *http.Request) (resp *http.Response, err error) {
 type mockTmeRepo struct {
 	sync.Mutex
 	terms []Term
+	term  Term
 	err   error
 	count int
 }
@@ -43,7 +45,7 @@ func (d *mockTmeRepo) GetTmeTermsFromIndex(startRecord int) ([]interface{}, erro
 	defer func() {
 		d.count++
 	}()
-	if len(d.terms) == d.count {
+	if len(d.terms) <= d.count {
 		return nil, d.err
 	}
 	return []interface{}{d.terms[d.count]}, d.err
@@ -51,7 +53,7 @@ func (d *mockTmeRepo) GetTmeTermsFromIndex(startRecord int) ([]interface{}, erro
 
 // Never used
 func (d *mockTmeRepo) GetTmeTermById(uuid string) (interface{}, error) {
-	return nil, nil
+	return d.term, d.err
 }
 
 type blockingRepo struct {
@@ -151,7 +153,9 @@ func TestServiceImpl_GetAllConcepts_Success(t *testing.T) {
 	}(&pv, &wg)
 	wg.Wait()
 	assert.NoError(t, err)
-	assert.Equal(t, GetAllConceptsResult, res)
+	for _, v := range strings.Split(GetAllConceptsResult, "\n") {
+		assert.Contains(t, res, v)
+	}
 }
 
 func TestServiceImpl_GetAllConcepts_Error(t *testing.T) {
@@ -192,7 +196,17 @@ func TestServiceImpl_GetConceptUUIDs_Success(t *testing.T) {
 	}(&pv, &wg)
 	wg.Wait()
 	assert.NoError(t, err)
-	assert.Equal(t, GetConceptUUIDsResult, res)
+	for _, v := range strings.Split(GetConceptUUIDsResult, "\n") {
+		assert.Contains(t, res, v)
+	}
+}
+
+func TestServiceImpl_SendConceptByUUID_Success(t *testing.T) {
+	svc := createTestService(t, 200, nil)
+	time.Sleep(RepoSleepDuration)
+
+	err := svc.SendConceptByUUID("tx_id", "topics", "14fa0405-c625-3061-a1a0-a00643fc073f", false)
+	assert.NoError(t, err)
 }
 
 func TestServiceImpl_GetConceptByUUID(t *testing.T) {
@@ -212,7 +226,7 @@ func TestServiceImpl_GetConceptByUUID(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.False(t, found)
-		assert.Empty(t, bc.PrefLabel)
+		assert.Nil(t, bc)
 	})
 
 	t.Run("Error - wrong uuid", func(t *testing.T) {
@@ -220,7 +234,7 @@ func TestServiceImpl_GetConceptByUUID(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.False(t, found)
-		assert.Empty(t, bc.PrefLabel)
+		assert.Nil(t, bc)
 	})
 }
 

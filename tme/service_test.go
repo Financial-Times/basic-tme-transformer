@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -88,22 +87,18 @@ func TestInit(t *testing.T) {
 		resp:       "{}",
 	}
 
-	tmpfile := getTempFile(t)
-	defer os.Remove(tmpfile.Name())
-	service := createTestTmeService(repos, tmpfile.Name(), httpClient)
+	service := createTestTmeService(repos, httpClient)
 	defer func() {
 		repo.Done()
 	}()
 	assert.False(t, service.IsDataLoaded("topics"))
 }
 
-func createTestTmeService(repos map[string]tmereader.Repository, cacheFileName string, httpClient httpClient) Service {
-	return NewService(repos, cacheFileName, httpClient, "/base/url", 1, "/writer/endpoint", 1)
+func createTestTmeService(repos map[string]tmereader.Repository, httpClient httpClient) Service {
+	return NewService(repos, httpClient, "/base/url", 1, "/writer/endpoint", 1)
 }
 
 func TestServiceImpl_GetCount(t *testing.T) {
-	tmpfile := getTempFile(t)
-	defer os.Remove(tmpfile.Name())
 	repo := &mockTmeRepo{terms: []Term{{CanonicalName: "Bob", RawID: "bob"}, {CanonicalName: "Fred", RawID: "fred"}}}
 	repos := map[string]tmereader.Repository{
 		"topics": repo,
@@ -115,20 +110,20 @@ func TestServiceImpl_GetCount(t *testing.T) {
 	}
 
 	t.Run("Success", func(t *testing.T) {
-		svc := NewService(repos, tmpfile.Name(), successHTTPclient, "/base/url", 1, "/endpoint", 1)
+		svc := NewService(repos, successHTTPclient, "/base/url", 1, "/endpoint", 1)
 		time.Sleep(RepoSleepDuration)
 		count, err := svc.GetCount("topics")
 		assert.NoError(t, err)
 		assert.Equal(t, 2, count)
 	})
 	t.Run("Error - not loaded", func(t *testing.T) {
-		svc := NewService(repos, tmpfile.Name(), successHTTPclient, "/base/url", 1, "/endpoint", 1)
+		svc := NewService(repos, successHTTPclient, "/base/url", 1, "/endpoint", 1)
 		count, err := svc.GetCount("topics")
 		assert.Error(t, err)
 		assert.Equal(t, 0, count)
 	})
 	t.Run("Error - wrong bucket", func(t *testing.T) {
-		svc := NewService(repos, tmpfile.Name(), successHTTPclient, "/base/url", 1, "/endpoint", 1)
+		svc := NewService(repos, successHTTPclient, "/base/url", 1, "/endpoint", 1)
 		time.Sleep(RepoSleepDuration)
 		count, err := svc.GetCount("fake")
 		assert.Error(t, err)
@@ -277,7 +272,6 @@ func TestServiceImpl_SendConcepts_NoErrorWhenNotModified(t *testing.T) {
 }
 
 func createTestService(t *testing.T, statusCode int, clientError error) Service {
-	tmpfile := getTempFile(t)
 	repo := &mockTmeRepo{terms: []Term{{CanonicalName: "Bob", RawID: "bob"}, {CanonicalName: "Fred", RawID: "fred"}}}
 	repos := map[string]tmereader.Repository{
 		"topics": repo,
@@ -287,13 +281,5 @@ func createTestService(t *testing.T, statusCode int, clientError error) Service 
 		err:        clientError,
 		resp:       "{}",
 	}
-	return NewService(repos, tmpfile.Name(), successHTTPclient, "/base/url", 1, "/endpoint", 1)
-}
-
-func getTempFile(t *testing.T) *os.File {
-	tmpfile, err := ioutil.TempFile("", "example")
-	assert.NoError(t, err)
-	assert.NoError(t, tmpfile.Close())
-	log.Debug("File:%s", tmpfile.Name())
-	return tmpfile
+	return NewService(repos, successHTTPclient, "/base/url", 1, "/endpoint", 1)
 }

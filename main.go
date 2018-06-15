@@ -73,12 +73,6 @@ func main() {
 		Desc:   "Port to listen on",
 		EnvVar: "PORT",
 	})
-	cacheFileName := app.String(cli.StringOpt{
-		Name:   "cache-file-name",
-		Value:  "cache.db",
-		Desc:   "Cache file name",
-		EnvVar: "CACHE_FILE_NAME",
-	})
 	graphiteTCPAddress := app.String(cli.StringOpt{
 		Name:   "graphiteTCPAddress",
 		Value:  "",
@@ -135,7 +129,6 @@ func main() {
 			"batchSize":          *batchSize,
 			"baseURL":            *baseURL,
 			"port":               *port,
-			"cacheFileName":      *cacheFileName,
 			"graphiteTCPAddress": *graphiteTCPAddress,
 			"graphitePrefix":     *graphitePrefix,
 			"logMetrics":         *graphitePrefix,
@@ -160,7 +153,7 @@ func main() {
 				modelTransformer)
 		}
 
-		service := tme.NewService(repos, *cacheFileName, client, *baseURL, *maxRecords, *writerEndpoint, *writerWorkers)
+		service := tme.NewService(repos, client, *baseURL, *maxRecords, *writerEndpoint, *writerWorkers)
 
 		th := tme.NewHandler(service)
 		buildRoutes(th)

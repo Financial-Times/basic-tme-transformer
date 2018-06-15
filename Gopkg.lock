@@ -141,12 +141,6 @@
   revision = "7cafcd837844e784b526369c9bce262804aebc60"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/neverlee/keymutex"
-  packages = ["."]
-  revision = "f593aa834bf9f05e61eef08bcae8023b1e12685a"
-
-[[projects]]
   name = "github.com/pborman/uuid"
   packages = ["."]
   revision = "e790cca94e6cc75c7064b1332e63811d4aae1a53"
@@ -230,6 +224,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f956781c9b1f93ae7dc64aa7d84b5c9487d195f334c2855dc0998df9a115b83e"
+  inputs-digest = "67c7ddd5fcfc69abfd6f8e4f39ef5314cd2cf87f09953363c024cc401a3cf0ec"
   solver-name = "gps-cdcl"
   solver-version = 1

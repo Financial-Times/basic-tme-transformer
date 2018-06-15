@@ -55,8 +55,6 @@ spec:
             secretKeyRef:
               name: global-secrets
               key: tme.token
-        - name: CACHE_FILE_NAME
-          value: {{ .Values.env.CACHE_FILE_NAME }}
         - name: GRAPHITE_ADDRESS
           valueFrom:
             configMapKeyRef:
@@ -70,9 +68,6 @@ spec:
           value: {{ .Values.env.WRITER_ENDPOINT }}
         - name: WRITER_WORKERS
           value: "{{ .Values.env.WRITER_WORKERS }}"
-        volumeMounts:
-        - name: "{{ .Values.service.name }}-cache"
-          mountPath: /cache
         ports:
         - containerPort: 8080
         livenessProbe:
@@ -87,7 +82,3 @@ spec:
           periodSeconds: 30
         resources: 
 {{ toYaml .Values.resources | indent 12 }}
-      volumes:
-      - name: "{{ .Values.service.name }}-cache"
-        persistentVolumeClaim:
-          claimName: "{{ .Values.service.name }}-cache-pvc"

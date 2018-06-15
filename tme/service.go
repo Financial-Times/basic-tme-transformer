@@ -39,7 +39,6 @@ type Service interface {
 type ServiceImpl struct {
 	// sync.RWMutex
 	repos          map[string]tmereader.Repository
-	cacheFileName  string
 	httpClient     httpClient
 	baseURL        string
 	dataLoaded     *sync.Map
@@ -50,10 +49,9 @@ type ServiceImpl struct {
 }
 
 // NewService - creates an instance of Service
-func NewService(repos map[string]tmereader.Repository, cacheFilename string, httpClient httpClient, baseURL string, maxTmeRecords int, writerEndpoint string, writerWorkers int) Service {
+func NewService(repos map[string]tmereader.Repository, httpClient httpClient, baseURL string, maxTmeRecords int, writerEndpoint string, writerWorkers int) Service {
 	svc := &ServiceImpl{
 		repos:          repos,
-		cacheFileName:  cacheFilename,
 		httpClient:     httpClient,
 		baseURL:        baseURL,
 		maxTmeRecords:  maxTmeRecords,

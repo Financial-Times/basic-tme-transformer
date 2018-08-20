@@ -102,3 +102,16 @@ func TestTransformer_UnMarshallTerm(t *testing.T) {
 	assert.Nil(t, iFace)
 	assert.Error(t, err, errors.New("Not Implemented"))
 }
+
+func TestTransformer_UnMarshallTermEnabledDefault(t *testing.T) {
+	t.Run("Test term XML", func(t *testing.T) {
+		content, err := ioutil.ReadFile("../test-data/term.xml")
+		if err != nil {
+			log.Errorf("Failed to read test file: %s", err)
+		}
+		tr := Transformer{}
+		term, err := tr.UnMarshallTerm(content)
+		assert.Equal(t, "'Ar'ara", term.(Term).CanonicalName)
+		assert.Equal(t, true, term.(Term).Enabled)
+	})
+}

@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	GetAllConceptsResult  string        = "{\"uuid\":\"14fa0405-c625-3061-a1a0-a00643fc073f\",\"prefLabel\":\"Fred\",\"type\":\"Topic\",\"authority\":\"TME\",\"authorityValue\":\"ZnJlZA==-VG9waWNz\",\"isDeprecated\":true}\n{\"uuid\":\"c0e2b109-2212-35c1-8645-2a13bc2cc3db\",\"prefLabel\":\"Bob\",\"type\":\"Topic\",\"authority\":\"TME\",\"authorityValue\":\"Ym9i-VG9waWNz\",\"isDeprecated\":true}\n"
+	GetAllConceptsResult  string        = "{\"uuid\":\"14fa0405-c625-3061-a1a0-a00643fc073f\",\"prefLabel\":\"Fred\",\"type\":\"Topic\",\"authority\":\"TME\",\"authorityValue\":\"ZnJlZA==-VG9waWNz\",\"isDeprecated\":false}\n{\"uuid\":\"c0e2b109-2212-35c1-8645-2a13bc2cc3db\",\"prefLabel\":\"Bob\",\"type\":\"Topic\",\"authority\":\"TME\",\"authorityValue\":\"Ym9i-VG9waWNz\",\"isDeprecated\":false}\n"
 	GetConceptUUIDsResult string        = "{\"uuid\":\"14fa0405-c625-3061-a1a0-a00643fc073f\"}\n{\"uuid\":\"c0e2b109-2212-35c1-8645-2a13bc2cc3db\"}\n"
 	RepoSleepDuration     time.Duration = 5 * time.Second
 )
@@ -99,7 +99,7 @@ func createTestTmeService(repos map[string]tmereader.Repository, httpClient http
 }
 
 func TestServiceImpl_GetCount(t *testing.T) {
-	repo := &mockTmeRepo{terms: []Term{{CanonicalName: "Bob", RawID: "bob"}, {CanonicalName: "Fred", RawID: "fred"}}}
+	repo := &mockTmeRepo{terms: []Term{{CanonicalName: "Bob", RawID: "bob", Enabled: pTrueValue}, {CanonicalName: "Fred", RawID: "fred", Enabled: pTrueValue}}}
 	repos := map[string]tmereader.Repository{
 		"topics": repo,
 	}

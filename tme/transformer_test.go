@@ -74,6 +74,8 @@ func TestTransformer_UnMarshallTaxonomy(t *testing.T) {
 		assert.Equal(t, pTrueValue, iFace[0].(Term).Enabled)
 		assert.Equal(t, "Nstein_GL_AFTM_GL_111", iFace[1].(Term).RawID)
 		assert.Equal(t, pTrueValue, iFace[1].(Term).Enabled)
+		assert.Equal(t, "Nstein_GL_AFTM_GL_9493", iFace[2].(Term).RawID)
+		assert.Equal(t, pFalseValue, iFace[2].(Term).Enabled)
 	})
 
 	t.Run("Test categories XML", func(t *testing.T) {

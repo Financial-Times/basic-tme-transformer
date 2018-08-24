@@ -30,7 +30,7 @@ func (*Transformer) UnMarshallTaxonomy(contents []byte) ([]interface{}, error) {
 		for i, d := range taxonomy.TermsC {
 			if d.Enabled == nil {
 				d.Enabled = new(bool)
-				*d.Enabled = true
+				d.Enabled = pTrueValue
 			}
 			interfaces[i] = d
 		}
@@ -39,7 +39,7 @@ func (*Transformer) UnMarshallTaxonomy(contents []byte) ([]interface{}, error) {
 		for i, d := range taxonomy.TermsT {
 			if d.Enabled == nil {
 				d.Enabled = new(bool)
-				*d.Enabled = true
+				d.Enabled = pTrueValue
 			}
 			interfaces[i] = d
 		}
@@ -56,7 +56,7 @@ func (*Transformer) UnMarshallTerm(content []byte) (interface{}, error) {
 	}
 	if term.Enabled == nil {
 		term.Enabled = new(bool)
-		*term.Enabled = true
+		term.Enabled = pTrueValue
 	}
 	return term, nil
 }

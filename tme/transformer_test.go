@@ -26,10 +26,10 @@ func TestTransformer_transformConcept(t *testing.T) {
 	}
 
 	//Tme terms
-	exampleGenre := Term{CanonicalName: "NewGenre", RawID: "newGenre", Enabled: pTrueValue}
-	examplePersonWithAliases := Term{CanonicalName: "John Smith", RawID: "johnSmith", Aliases: aliases{Alias: []alias{{Name: "Johnny Boy"}, {Name: "Smithy"}}}, Enabled: pTrueValue}
-	examplePersonWithoutAliases := Term{CanonicalName: "Jane Doe", RawID: "janeDoe", Enabled: pTrueValue}
-	exampleBrand := Term{CanonicalName: "NewBrand", RawID: "newBrand", Enabled: pTrueValue}
+	exampleGenre := Term{CanonicalName: "NewGenre", RawID: "newGenre"}
+	examplePersonWithAliases := Term{CanonicalName: "John Smith", RawID: "johnSmith", Aliases: aliases{Alias: []alias{{Name: "Johnny Boy"}, {Name: "Smithy"}}}}
+	examplePersonWithoutAliases := Term{CanonicalName: "Jane Doe", RawID: "janeDoe"}
+	exampleBrand := Term{CanonicalName: "NewBrand", RawID: "newBrand"}
 	exampleAuthor := Term{CanonicalName: "Author McAuthorface", RawID: "mcAuthorFace", Aliases: aliases{Alias: []alias{{Name: "John"}, {Name: "Bob"}}}, Enabled: pTrueValue}
 	exampleDeprecatedGenre := Term{CanonicalName: "OldGenre", RawID: "oldGenre", Enabled: pFalseValue}
 

@@ -4,9 +4,9 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 
-	"github.com/Financial-Times/go-logger"
 	"github.com/Financial-Times/tme-reader/tmereader"
 	"github.com/pborman/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 const financialTimesBrandUuid = "dbb0bdae-1f0c-11e4-b0cb-b2227cce2b54"
@@ -66,7 +66,7 @@ func transformConcept(tmeTerm Term, endpoint string) *BasicConcept {
 	identifier := buildTmeIdentifier(tmeTerm.RawID, EndpointTypeMappings[endpoint]["taxonomy"].(string))
 	generatedUUID := uuid.NewMD5(uuid.UUID{}, []byte(identifier)).String()
 	aliasList := buildAliasList(tmeTerm.Aliases)
-	logger.Infoln(generatedUUID)
+	log.Infoln(generatedUUID)
 	basicConcept := &BasicConcept{
 		UUID:           generatedUUID,
 		PrefLabel:      tmeTerm.CanonicalName,
@@ -77,9 +77,9 @@ func transformConcept(tmeTerm Term, endpoint string) *BasicConcept {
 		IsDeprecated:   pFalseValue,
 	}
 	if tmeTerm.Enabled == pFalseValue {
-		logger.Infof("id %s enabled %v", generatedUUID, tmeTerm.Enabled)
+		log.Infof("id %s enabled %v", generatedUUID, tmeTerm.Enabled)
 		basicConcept.IsDeprecated = pTrueValue
-		logger.Infof("id %s deprecated %v", generatedUUID, basicConcept.IsDeprecated)
+		log.Infof("id %s deprecated %v", generatedUUID, basicConcept.IsDeprecated)
 	}
 	if (EndpointTypeMappings[endpoint]["taxonomy"].(string)) == "Brands" {
 		basicConcept.ParentUUIDs = []string{financialTimesBrandUuid}

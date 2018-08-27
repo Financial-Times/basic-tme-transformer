@@ -6,7 +6,6 @@ import (
 
 	"github.com/Financial-Times/tme-reader/tmereader"
 	"github.com/pborman/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 const financialTimesBrandUuid = "dbb0bdae-1f0c-11e4-b0cb-b2227cce2b54"
@@ -61,7 +60,6 @@ func transformConcept(tmeTerm Term, endpoint string) *BasicConcept {
 	identifier := buildTmeIdentifier(tmeTerm.RawID, EndpointTypeMappings[endpoint]["taxonomy"].(string))
 	generatedUUID := uuid.NewMD5(uuid.UUID{}, []byte(identifier)).String()
 	aliasList := buildAliasList(tmeTerm.Aliases)
-	log.Infoln(generatedUUID)
 	basicConcept := &BasicConcept{
 		UUID:           generatedUUID,
 		PrefLabel:      tmeTerm.CanonicalName,

@@ -9,7 +9,7 @@ type BasicConcept struct {
 	AuthorityValue string   `json:"authorityValue,omitempty"`
 	Aliases        []string `json:"aliases,omitempty"`
 	IsAuthor       bool     `json:"isAuthor,omitempty"`
-	IsDeprecated   *bool    `json:"isDeprecated,omitempty"`
+	IsDeprecated   bool     `json:"isDeprecated,omitempty"`
 }
 
 type ConceptUUID struct {

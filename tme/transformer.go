@@ -48,7 +48,7 @@ func transformConcept(tmeTerm Term, endpoint string) *BasicConcept {
 	identifier := buildTmeIdentifier(tmeTerm.RawID, EndpointTypeMappings[endpoint]["taxonomy"].(string))
 	generatedUUID := uuid.NewMD5(uuid.UUID{}, []byte(identifier)).String()
 	var aliasList []string
-	if endpoint != "location" {
+	if endpoint != "locations" {
 		aliasList = buildAliasList(tmeTerm.Aliases)
 	}
 

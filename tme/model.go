@@ -25,7 +25,7 @@ type Term struct {
 	CanonicalName string  `xml:"name"`
 	RawID         string  `xml:"id"`
 	Aliases       aliases `xml:"variations"`
-	Enabled       string  `xml:"enabled,omitempty"`
+	Enabled       bool    `xml:"enabled,omitempty"`
 }
 
 type aliases struct {

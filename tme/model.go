@@ -9,7 +9,6 @@ type BasicConcept struct {
 	AuthorityValue string   `json:"authorityValue,omitempty"`
 	Aliases        []string `json:"aliases,omitempty"`
 	IsAuthor       bool     `json:"isAuthor,omitempty"`
-	IsDeprecated   bool     `json:"isDeprecated,omitempty"`
 }
 
 type ConceptUUID struct {
@@ -25,7 +24,6 @@ type Term struct {
 	CanonicalName string  `xml:"name"`
 	RawID         string  `xml:"id"`
 	Aliases       aliases `xml:"variations"`
-	Enabled       bool    `xml:"enabled,omitempty"`
 }
 
 type aliases struct {

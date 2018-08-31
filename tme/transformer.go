@@ -47,7 +47,10 @@ func (*Transformer) UnMarshallTerm(content []byte) (interface{}, error) {
 func transformConcept(tmeTerm Term, endpoint string) *BasicConcept {
 	identifier := buildTmeIdentifier(tmeTerm.RawID, EndpointTypeMappings[endpoint]["taxonomy"].(string))
 	generatedUUID := uuid.NewMD5(uuid.UUID{}, []byte(identifier)).String()
-	aliasList := buildAliasList(tmeTerm.Aliases)
+	var aliasList []string
+	if endpoint != "locations" {
+		aliasList = buildAliasList(tmeTerm.Aliases)
+	}
 
 	basicConcept := &BasicConcept{
 		UUID:           generatedUUID,

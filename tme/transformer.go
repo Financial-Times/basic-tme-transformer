@@ -36,7 +36,7 @@ func (*Transformer) UnMarshallTaxonomy(contents []byte) ([]interface{}, error) {
 }
 
 func (*Transformer) UnMarshallTerm(content []byte) (interface{}, error) {
-	term := Term{Enabled: true}
+	term := Term{}
 	err := xml.Unmarshal(content, &term)
 	if err != nil {
 		return nil, err
@@ -59,9 +59,6 @@ func transformConcept(tmeTerm Term, endpoint string) *BasicConcept {
 		Authority:      "TME",
 		AuthorityValue: identifier,
 		Aliases:        aliasList,
-	}
-	if tmeTerm.Enabled == false {
-		basicConcept.IsDeprecated = true
 	}
 	if (EndpointTypeMappings[endpoint]["taxonomy"].(string)) == "Brands" {
 		basicConcept.ParentUUIDs = []string{financialTimesBrandUuid}

@@ -11,27 +11,25 @@ import (
 
 func TestTransformer_transformConcept(t *testing.T) {
 	type testStruct struct {
-		testName             string
-		testTerm             Term
-		endpoint             string
-		expectedUuid         string
-		expectedPrefLabel    string
-		expectedType         string
-		expectedParentUuid   string
-		expectedAuthority    string
-		expectedAuthValue    string
-		expectedAliases      []string
-		expectedIsAuthor     bool
-		expectedIsDeprecated bool
+		testName           string
+		testTerm           Term
+		endpoint           string
+		expectedUuid       string
+		expectedPrefLabel  string
+		expectedType       string
+		expectedParentUuid string
+		expectedAuthority  string
+		expectedAuthValue  string
+		expectedAliases    []string
+		expectedIsAuthor   bool
 	}
 
 	//Tme terms
-	exampleGenre := Term{CanonicalName: "NewGenre", RawID: "newGenre", Enabled: true}
-	examplePersonWithAliases := Term{CanonicalName: "John Smith", RawID: "johnSmith", Aliases: aliases{Alias: []alias{{Name: "Johnny Boy"}, {Name: "Smithy"}}}, Enabled: true}
-	examplePersonWithoutAliases := Term{CanonicalName: "Jane Doe", RawID: "janeDoe", Enabled: true}
-	exampleBrand := Term{CanonicalName: "NewBrand", RawID: "newBrand", Enabled: true}
-	exampleAuthor := Term{CanonicalName: "Author McAuthorface", RawID: "mcAuthorFace", Aliases: aliases{Alias: []alias{{Name: "John"}, {Name: "Bob"}}}, Enabled: true}
-	exampleDeprecatedGenre := Term{CanonicalName: "OldGenre", RawID: "oldGenre", Enabled: false}
+	exampleGenre := Term{CanonicalName: "NewGenre", RawID: "newGenre"}
+	examplePersonWithAliases := Term{CanonicalName: "John Smith", RawID: "johnSmith", Aliases: aliases{Alias: []alias{{Name: "Johnny Boy"}, {Name: "Smithy"}}}}
+	examplePersonWithoutAliases := Term{CanonicalName: "Jane Doe", RawID: "janeDoe"}
+	exampleBrand := Term{CanonicalName: "NewBrand", RawID: "newBrand"}
+	exampleAuthor := Term{CanonicalName: "Author McAuthorface", RawID: "mcAuthorFace", Aliases: aliases{Alias: []alias{{Name: "John"}, {Name: "Bob"}}}}
 
 	//Scenarios
 	genreTest := testStruct{testName: "genreTest", testTerm: exampleGenre, endpoint: "genres", expectedUuid: "7c80229b-3ad4-3bee-bb7a-45eaafe3f83a", expectedType: "Genre", expectedPrefLabel: "NewGenre", expectedAliases: []string{}, expectedParentUuid: "", expectedAuthority: "TME", expectedAuthValue: "bmV3R2VucmU=-R2VucmVz", expectedIsAuthor: false}
@@ -39,9 +37,8 @@ func TestTransformer_transformConcept(t *testing.T) {
 	personNoAliases := testStruct{testName: "personNoAliases", testTerm: examplePersonWithoutAliases, endpoint: "people", expectedUuid: "ee34e2fd-f363-339b-aa25-191483cb909e", expectedType: "Person", expectedPrefLabel: "Jane Doe", expectedAliases: []string{}, expectedParentUuid: "", expectedAuthority: "TME", expectedAuthValue: "amFuZURvZQ==-UE4=", expectedIsAuthor: false}
 	brandTest := testStruct{testName: "brandTest", testTerm: exampleBrand, endpoint: "brands", expectedUuid: "dcb6cc7c-0e5b-3537-8c98-5405a52484f3", expectedType: "Brand", expectedPrefLabel: "NewBrand", expectedAliases: []string{}, expectedParentUuid: financialTimesBrandUuid, expectedAuthority: "TME", expectedAuthValue: "bmV3QnJhbmQ=-QnJhbmRz", expectedIsAuthor: false}
 	authorTest := testStruct{testName: "authorTest", testTerm: exampleAuthor, endpoint: "authors", expectedUuid: "829f073f-6666-338f-abd6-d69c37f2e5d0", expectedType: "Person", expectedPrefLabel: "Author McAuthorface", expectedAliases: []string{"John", "Bob"}, expectedParentUuid: "", expectedAuthority: "TME", expectedAuthValue: "bWNBdXRob3JGYWNl-QXV0aG9ycw==", expectedIsAuthor: true}
-	deprecatedGenreTest := testStruct{testName: "deprecatedGenreTest", testTerm: exampleDeprecatedGenre, endpoint: "genres", expectedUuid: "0f2b2e49-74a2-3357-ba22-80a353922dab", expectedType: "Genre", expectedPrefLabel: "OldGenre", expectedAliases: []string{}, expectedParentUuid: "", expectedAuthority: "TME", expectedAuthValue: "b2xkR2VucmU=-R2VucmVz", expectedIsAuthor: false, expectedIsDeprecated: true}
 
-	testScenarios := []testStruct{genreTest, personWithAliases, personNoAliases, brandTest, authorTest, deprecatedGenreTest}
+	testScenarios := []testStruct{genreTest, personWithAliases, personNoAliases, brandTest, authorTest}
 
 	for _, scenario := range testScenarios {
 		result := transformConcept(scenario.testTerm, scenario.endpoint)
@@ -56,7 +53,6 @@ func TestTransformer_transformConcept(t *testing.T) {
 		assert.Equal(t, scenario.expectedAuthority, result.Authority, "Scenario "+scenario.testName+" failed")
 		assert.Equal(t, scenario.expectedAuthValue, result.AuthorityValue, "Scenario "+scenario.testName+" failed")
 		assert.Equal(t, scenario.expectedIsAuthor, result.IsAuthor, "Scenario "+scenario.testName+" failed")
-		assert.Equal(t, scenario.expectedIsDeprecated, result.IsDeprecated, "Scenario "+scenario.testName+" failed")
 	}
 }
 
@@ -101,17 +97,4 @@ func TestTransformer_UnMarshallTerm(t *testing.T) {
 	iFace, err := tr.UnMarshallTerm(content)
 	assert.Nil(t, iFace)
 	assert.Error(t, err, errors.New("Not Implemented"))
-}
-
-func TestTransformer_UnMarshallTermEnabledDefault(t *testing.T) {
-	t.Run("Test term XML", func(t *testing.T) {
-		content, err := ioutil.ReadFile("../test-data/term.xml")
-		if err != nil {
-			log.Errorf("Failed to read test file: %s", err)
-		}
-		tr := Transformer{}
-		term, err := tr.UnMarshallTerm(content)
-		assert.Equal(t, "'Ar'ara", term.(Term).CanonicalName)
-		assert.Equal(t, true, term.(Term).Enabled)
-	})
 }

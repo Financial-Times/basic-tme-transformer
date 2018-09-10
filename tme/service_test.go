@@ -99,7 +99,11 @@ func createTestTmeService(repos map[string]tmereader.Repository, httpClient http
 }
 
 func TestServiceImpl_GetCount(t *testing.T) {
-	repo := &mockTmeRepo{terms: []Term{{CanonicalName: "Bob", RawID: "bob"}, {CanonicalName: "Fred", RawID: "fred"}}}
+	bob := Term{CanonicalName: "Bob", RawID: "bob", Enabled: new(bool)}
+	*bob.Enabled = true
+	fred := Term{CanonicalName: "Fred", RawID: "fred", Enabled: new(bool)}
+	*fred.Enabled = true
+	repo := &mockTmeRepo{terms: []Term{bob, fred}}
 	repos := map[string]tmereader.Repository{
 		"topics": repo,
 	}

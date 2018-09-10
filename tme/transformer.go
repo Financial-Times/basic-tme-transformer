@@ -23,11 +23,19 @@ func (*Transformer) UnMarshallTaxonomy(contents []byte) ([]interface{}, error) {
 	if len(taxonomy.TermsC) > 0 {
 		interfaces = make([]interface{}, len(taxonomy.TermsC))
 		for i, d := range taxonomy.TermsC {
+			if d.Enabled == nil {
+				d.Enabled = new(bool)
+				*d.Enabled = true
+			}
 			interfaces[i] = d
 		}
 	} else {
 		interfaces = make([]interface{}, len(taxonomy.TermsT))
 		for i, d := range taxonomy.TermsT {
+			if d.Enabled == nil {
+				d.Enabled = new(bool)
+				*d.Enabled = true
+			}
 			interfaces[i] = d
 		}
 	}
@@ -41,6 +49,10 @@ func (*Transformer) UnMarshallTerm(content []byte) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	if term.Enabled == nil {
+		term.Enabled = new(bool)
+		*term.Enabled = true
+	}
 	return term, nil
 }
 
@@ -48,7 +60,6 @@ func transformConcept(tmeTerm Term, endpoint string) *BasicConcept {
 	identifier := buildTmeIdentifier(tmeTerm.RawID, EndpointTypeMappings[endpoint]["taxonomy"].(string))
 	generatedUUID := uuid.NewMD5(uuid.UUID{}, []byte(identifier)).String()
 	aliasList := buildAliasList(tmeTerm.Aliases)
-
 	basicConcept := &BasicConcept{
 		UUID:           generatedUUID,
 		PrefLabel:      tmeTerm.CanonicalName,
@@ -56,6 +67,10 @@ func transformConcept(tmeTerm Term, endpoint string) *BasicConcept {
 		Authority:      "TME",
 		AuthorityValue: identifier,
 		Aliases:        aliasList,
+		IsDeprecated:   false,
+	}
+	if tmeTerm.Enabled != nil && *tmeTerm.Enabled == false {
+		basicConcept.IsDeprecated = true
 	}
 	if (EndpointTypeMappings[endpoint]["taxonomy"].(string)) == "Brands" {
 		basicConcept.ParentUUIDs = []string{financialTimesBrandUuid}

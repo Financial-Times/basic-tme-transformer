@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/Financial-Times/base-ft-rw-app-go/baseftrwapp"
 	"github.com/Financial-Times/basic-tme-transformer/tme"
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"github.com/Financial-Times/http-handlers-go/httphandlers"
@@ -17,7 +16,7 @@ import (
 	"github.com/Financial-Times/tme-reader/tmereader"
 	"github.com/jawher/mow.cli"
 	_ "github.com/joho/godotenv/autoload"
-	metrics "github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics"
 	"github.com/sethgrid/pester"
 	log "github.com/sirupsen/logrus"
 )
@@ -73,24 +72,6 @@ func main() {
 		Desc:   "Port to listen on",
 		EnvVar: "PORT",
 	})
-	graphiteTCPAddress := app.String(cli.StringOpt{
-		Name:   "graphiteTCPAddress",
-		Value:  "",
-		Desc:   "Graphite TCP address, e.g. graphite.ft.com:2003. Leave as default if you do NOT want to output to graphite (e.g. if running locally)",
-		EnvVar: "GRAPHITE_ADDRESS",
-	})
-	graphitePrefix := app.String(cli.StringOpt{
-		Name:   "graphitePrefix",
-		Value:  "",
-		Desc:   "Prefix to use. Should start with content, include the environment, and the host name. e.g. content.test.public.content.by.concept.api.ftaps59382-law1a-eu-t",
-		EnvVar: "GRAPHITE_PREFIX",
-	})
-	logMetrics := app.Bool(cli.BoolOpt{
-		Name:   "logMetrics",
-		Value:  false,
-		Desc:   "Whether to log metrics. Set to true if running locally and you want metrics output",
-		EnvVar: "LOG_METRICS",
-	})
 	logLevel := app.String(cli.StringOpt{
 		Name:   "logLevel",
 		Value:  "INFO",
@@ -118,23 +99,19 @@ func main() {
 		log.SetLevel(lvl)
 
 		client := getResilientClient(*writerWorkers)
-		baseftrwapp.OutputMetricsIfRequired(*graphiteTCPAddress, *graphitePrefix, *logMetrics)
 
 		wURL, _ := url.Parse(*writerEndpoint)
 		wURL.User = nil
 
 		log.WithFields(log.Fields{
-			"tmeBaseURL":         *tmeBaseURL,
-			"maxRecords":         *maxRecords,
-			"batchSize":          *batchSize,
-			"baseURL":            *baseURL,
-			"port":               *port,
-			"graphiteTCPAddress": *graphiteTCPAddress,
-			"graphitePrefix":     *graphitePrefix,
-			"logMetrics":         *graphitePrefix,
-			"logLevel":           *logLevel,
-			"writerEndpoint":     wURL,
-			"writerWorkers":      *writerWorkers,
+			"tmeBaseURL":     *tmeBaseURL,
+			"maxRecords":     *maxRecords,
+			"batchSize":      *batchSize,
+			"baseURL":        *baseURL,
+			"port":           *port,
+			"logLevel":       *logLevel,
+			"writerEndpoint": wURL,
+			"writerWorkers":  *writerWorkers,
 		}).Info("Starting with variables")
 
 		modelTransformer := new(tme.Transformer)

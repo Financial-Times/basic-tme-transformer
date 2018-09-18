@@ -55,15 +55,6 @@ spec:
             secretKeyRef:
               name: global-secrets
               key: tme.token
-        - name: GRAPHITE_ADDRESS
-          valueFrom:
-            configMapKeyRef:
-              name: global-config
-              key: graphite.address
-        - name: GRAPHITE_PREFIX
-          value: 'coco.services.{{required "The target_env value is required for this app. Use helm upgrade ... --set target_env=... when installing." .Values.target_env}}.{{ .Values.service.name }}'
-        - name: LOG_METRICS
-          value: "{{ .Values.env.LOG_METRICS }}"
         - name: WRITER_ENDPOINT
           value: {{ .Values.env.WRITER_ENDPOINT }}
         - name: WRITER_WORKERS

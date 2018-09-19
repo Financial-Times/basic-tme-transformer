@@ -15,6 +15,5 @@ resources:
     memory: 2Gi
 env:
   BASE_URL: "http://basic-tme-transformer:8080/transformers"
-  LOG_METRICS: "false"
   WRITER_ENDPOINT: "http://concepts-rw-s3:8080/concepts"
   WRITER_WORKERS: "10"

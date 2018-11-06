@@ -21,7 +21,6 @@ func TestTransformer_transformConcept(t *testing.T) {
 		expectedAuthority    string
 		expectedAuthValue    string
 		expectedAliases      []string
-		expectedIsAuthor     bool
 		expectedIsDeprecated bool
 	}
 
@@ -36,14 +35,13 @@ func TestTransformer_transformConcept(t *testing.T) {
 	*exampleDeprecatedGenre.Enabled = false
 
 	//Scenarios
-	genreTest := testStruct{testName: "genreTest", testTerm: exampleGenre, endpoint: "genres", expectedUuid: "7c80229b-3ad4-3bee-bb7a-45eaafe3f83a", expectedType: "Genre", expectedPrefLabel: "NewGenre", expectedAliases: []string{}, expectedParentUuid: "", expectedAuthority: "TME", expectedAuthValue: "bmV3R2VucmU=-R2VucmVz", expectedIsAuthor: false, expectedIsDeprecated: false}
-	personWithAliases := testStruct{testName: "personWithAliases", testTerm: examplePersonWithAliases, endpoint: "people", expectedUuid: "05d18aac-9d8e-35d6-9a50-a950fc10aa0e", expectedType: "Person", expectedPrefLabel: "John Smith", expectedAliases: []string{"Johnny Boy", "Smithy"}, expectedParentUuid: "", expectedAuthority: "TME", expectedAuthValue: "am9oblNtaXRo-UE4=", expectedIsAuthor: false, expectedIsDeprecated: false}
-	personNoAliases := testStruct{testName: "personNoAliases", testTerm: examplePersonWithoutAliases, endpoint: "people", expectedUuid: "ee34e2fd-f363-339b-aa25-191483cb909e", expectedType: "Person", expectedPrefLabel: "Jane Doe", expectedAliases: []string{}, expectedParentUuid: "", expectedAuthority: "TME", expectedAuthValue: "amFuZURvZQ==-UE4=", expectedIsAuthor: false, expectedIsDeprecated: false}
-	brandTest := testStruct{testName: "brandTest", testTerm: exampleBrand, endpoint: "brands", expectedUuid: "dcb6cc7c-0e5b-3537-8c98-5405a52484f3", expectedType: "Brand", expectedPrefLabel: "NewBrand", expectedAliases: []string{}, expectedParentUuid: financialTimesBrandUuid, expectedAuthority: "TME", expectedAuthValue: "bmV3QnJhbmQ=-QnJhbmRz", expectedIsAuthor: false, expectedIsDeprecated: false}
-	authorTest := testStruct{testName: "authorTest", testTerm: exampleAuthor, endpoint: "authors", expectedUuid: "829f073f-6666-338f-abd6-d69c37f2e5d0", expectedType: "Person", expectedPrefLabel: "Author McAuthorface", expectedAliases: []string{"John", "Bob"}, expectedParentUuid: "", expectedAuthority: "TME", expectedAuthValue: "bWNBdXRob3JGYWNl-QXV0aG9ycw==", expectedIsAuthor: true, expectedIsDeprecated: false}
-	deprecatedGenreTest := testStruct{testName: "deprecatedGenreTest", testTerm: exampleDeprecatedGenre, endpoint: "genres", expectedUuid: "0f2b2e49-74a2-3357-ba22-80a353922dab", expectedType: "Genre", expectedPrefLabel: "OldGenre", expectedAliases: []string{}, expectedParentUuid: "", expectedAuthority: "TME", expectedAuthValue: "b2xkR2VucmU=-R2VucmVz", expectedIsAuthor: false, expectedIsDeprecated: true}
+	genreTest := testStruct{testName: "genreTest", testTerm: exampleGenre, endpoint: "genres", expectedUuid: "7c80229b-3ad4-3bee-bb7a-45eaafe3f83a", expectedType: "Genre", expectedPrefLabel: "NewGenre", expectedAliases: []string{}, expectedParentUuid: "", expectedAuthority: "TME", expectedAuthValue: "bmV3R2VucmU=-R2VucmVz", expectedIsDeprecated: false}
+	personWithAliases := testStruct{testName: "personWithAliases", testTerm: examplePersonWithAliases, endpoint: "people", expectedUuid: "05d18aac-9d8e-35d6-9a50-a950fc10aa0e", expectedType: "Person", expectedPrefLabel: "John Smith", expectedAliases: []string{"Johnny Boy", "Smithy"}, expectedParentUuid: "", expectedAuthority: "TME", expectedAuthValue: "am9oblNtaXRo-UE4=", expectedIsDeprecated: false}
+	personNoAliases := testStruct{testName: "personNoAliases", testTerm: examplePersonWithoutAliases, endpoint: "people", expectedUuid: "ee34e2fd-f363-339b-aa25-191483cb909e", expectedType: "Person", expectedPrefLabel: "Jane Doe", expectedAliases: []string{}, expectedParentUuid: "", expectedAuthority: "TME", expectedAuthValue: "amFuZURvZQ==-UE4=", expectedIsDeprecated: false}
+	brandTest := testStruct{testName: "brandTest", testTerm: exampleBrand, endpoint: "brands", expectedUuid: "dcb6cc7c-0e5b-3537-8c98-5405a52484f3", expectedType: "Brand", expectedPrefLabel: "NewBrand", expectedAliases: []string{}, expectedParentUuid: financialTimesBrandUuid, expectedAuthority: "TME", expectedAuthValue: "bmV3QnJhbmQ=-QnJhbmRz", expectedIsDeprecated: false}
+	deprecatedGenreTest := testStruct{testName: "deprecatedGenreTest", testTerm: exampleDeprecatedGenre, endpoint: "genres", expectedUuid: "0f2b2e49-74a2-3357-ba22-80a353922dab", expectedType: "Genre", expectedPrefLabel: "OldGenre", expectedAliases: []string{}, expectedParentUuid: "", expectedAuthority: "TME", expectedAuthValue: "b2xkR2VucmU=-R2VucmVz", expectedIsDeprecated: true}
 
-	testScenarios := []testStruct{genreTest, personWithAliases, personNoAliases, brandTest, authorTest, deprecatedGenreTest}
+	testScenarios := []testStruct{genreTest, personWithAliases, personNoAliases, brandTest, deprecatedGenreTest}
 
 	for _, scenario := range testScenarios {
 		result := transformConcept(scenario.testTerm, scenario.endpoint)
@@ -57,7 +55,6 @@ func TestTransformer_transformConcept(t *testing.T) {
 		assert.Equal(t, scenario.expectedAliases, result.Aliases, "Scenario "+scenario.testName+" failed")
 		assert.Equal(t, scenario.expectedAuthority, result.Authority, "Scenario "+scenario.testName+" failed")
 		assert.Equal(t, scenario.expectedAuthValue, result.AuthorityValue, "Scenario "+scenario.testName+" failed")
-		assert.Equal(t, scenario.expectedIsAuthor, result.IsAuthor, "Scenario "+scenario.testName+" failed")
 		assert.Equal(t, scenario.expectedIsDeprecated, result.IsDeprecated, "Scenario "+scenario.testName+" failed")
 	}
 }

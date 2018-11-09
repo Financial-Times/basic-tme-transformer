@@ -8,7 +8,6 @@ type BasicConcept struct {
 	Authority      string   `json:"authority,omitempty"`
 	AuthorityValue string   `json:"authorityValue,omitempty"`
 	Aliases        []string `json:"aliases,omitempty"`
-	IsAuthor       bool     `json:"isAuthor,omitempty"`
 	IsDeprecated   bool     `json:"isDeprecated,omitempty"`
 }
 

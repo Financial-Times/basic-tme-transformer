@@ -74,8 +74,6 @@ func transformConcept(tmeTerm Term, endpoint string) *BasicConcept {
 	}
 	if (EndpointTypeMappings[endpoint]["taxonomy"].(string)) == "Brands" {
 		basicConcept.ParentUUIDs = []string{financialTimesBrandUuid}
-	} else if (EndpointTypeMappings[endpoint]["taxonomy"].(string)) == "Authors" {
-		basicConcept.IsAuthor = true
 	}
 	return basicConcept
 }

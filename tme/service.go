@@ -337,7 +337,7 @@ func (s *ServiceImpl) SendConcepts(endpoint, jobID string, ignoreHash bool) erro
 		return errors.New("data not loaded")
 	}
 	for k, v := range concepts.([]*BasicConcept) {
-		log.Debugf("Sending concept to writer [%s]: %s", jobID, k)
+		log.Debugf("Sending concept to writer [%s]: %d", jobID, k)
 		requestChannel <- conceptRequest{
 			uuid:    v.UUID,
 			jobID:   jobID,
